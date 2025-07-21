@@ -22,13 +22,132 @@ def get_base64_image(image_path):
         encoded = base64.b64encode(img_file.read()).decode()
     return encoded
 
+def crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas):
+    barras_der, barras_izq, nombres = [], [], []
+    lsi_labels = {}
+
+    for metrica in metricas_seleccionadas:
+        if metrica == "CMJ":
+            # Propulsiva
+            val_der_prop = datos_jugador.get("CMJ F. Der (N)", 0)
+            val_izq_prop = datos_jugador.get("CMJ F. Izq (N)", 0)
+            lsi_fp = datos_jugador.get("CMJ FP LSI (%) I/D", None)
+
+            barras_der.append(val_der_prop)
+            barras_izq.append(val_izq_prop)
+            nombres.append("CMJ Prop")
+            lsi_labels["CMJ Prop"] = lsi_fp
+
+            # Frenado
+            val_der_fren = datos_jugador.get("CMJ F. Der (N).1", 0)
+            val_izq_fren = datos_jugador.get("CMJ F. Izq (N).1", 0)
+            lsi_ff = datos_jugador.get("CMJ FF LSI (%) I/D", None)
+
+            barras_der.append(val_der_fren)
+            barras_izq.append(val_izq_fren)
+            nombres.append("CMJ Fren")
+            lsi_labels["CMJ Fren"] = lsi_ff
+        else:
+            col_der, col_izq = metricas_columnas[metrica]
+            val_der = datos_jugador.get(col_der, 0)
+            val_izq = datos_jugador.get(col_izq, 0)
+            barras_der.append(val_der)
+            barras_izq.append(val_izq)
+            nombres.append(metrica)
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=nombres,
+        y=barras_der,
+        name="Derecho",
+        marker=dict(color="#33A1FD", line=dict(width=1.5, color="#1e1e1e")),
+        text=[f"{v:.0f} N" for v in barras_der],
+        textposition="outside",
+        textfont=dict(size=14),
+        hovertemplate='Derecho<br>%{x}: %{y:.0f} N<extra></extra>'
+    ))
+
+    fig.add_trace(go.Bar(
+        x=nombres,
+        y=barras_izq,
+        name="Izquierdo",
+        marker=dict(color="#FD9E02", line=dict(width=1.5, color="#1e1e1e")),
+        text=[f"{v:.0f} N" for v in barras_izq],
+        textposition="outside",
+        textfont=dict(size=14),
+        hovertemplate='Izquierdo<br>%{x}: %{y:.0f} N<extra></extra>'
+    ))
+
+    # LSI annotations
+    for name in nombres:
+        if name == "CUAD 70°":
+            lsi_val = datos_jugador.get("CUAD LSI (%)", None)
+        elif name == "ISQ Wollin":
+            lsi_val = datos_jugador.get("ISQUIO LSI (%)", None)
+        elif name == "IMTP":
+            lsi_val = datos_jugador.get("IMTP LSI (%)", None)
+        else:
+            lsi_val = lsi_labels.get(name)
+
+        if lsi_val and lsi_val > 0:
+            idx = nombres.index(name)
+            fig.add_annotation(
+                text=f"<b>LSI: {lsi_val:.1f}%</b>",
+                x=name,
+                y=max(barras_der[idx], barras_izq[idx]) * 1.25,
+                showarrow=False,
+                font=dict(size=14, color="white"),
+                xanchor="center",
+                align="center",
+                bgcolor="rgba(255,255,255,0.15)",
+                bordercolor="white",
+                borderwidth=1,
+                borderpad=4
+            )
+
+    fig.update_layout(
+        barmode="group",
+        title=dict(
+            text="Comparación D/I – Métricas seleccionadas",
+            font=dict(size=22),
+            y=0.92
+        ),
+        xaxis=dict(
+            title=dict(text="Métrica", font=dict(size=15)),
+            tickfont=dict(size=13)
+        ),
+        yaxis=dict(
+            title=dict(text="N (fuerza)", font=dict(size=15)),
+            tickfont=dict(size=13)
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.05,
+            xanchor="right",
+            x=1,
+            font=dict(size=13)
+        ),
+        plot_bgcolor="#1e1e1e",
+        paper_bgcolor="#1e1e1e",
+        font=dict(color="white"),
+        height=560,
+        margin=dict(t=80, b=40, l=40, r=40)
+    )
+
+    return fig
+
+
+
+
+
 # ========= CONFIGURACIÓN DE MÉTRICAS ==========
 metricas_por_seccion = {
     "Fuerza": {
         "CUAD 70° Der": "CUAD 70° Izq",
         "ISQ Wollin Der": "ISQ Wollin Izq",
         "IMTP F. Der (N)": "IMTP F. Izq (N)",
-        "CMJ F. Der (N)": "CMJ F. Izq (N)",
         "CMJ F. Der (N)": "CMJ F. Izq (N)"
     },
     "Movilidad": {
@@ -81,181 +200,31 @@ if vista == "Perfil del Jugador":
     datos_jugador = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
 
     if seccion == "Fuerza":
-        # Función para unificar estilo visual
-        def estilo_barras(fig):
-            fig.update_layout(
-                plot_bgcolor="#1e1e1e",
-                paper_bgcolor="#1e1e1e",
-                font=dict(color="white"),
-                height=420,
-                margin=dict(t=120, b=40, l=40, r=40),  # más espacio arriba
-                title=dict(
-                    y=0.95,  # lo subimos más cerca del borde
-                    yanchor='top',
-                    font=dict(size=20)
-                )
-            )
-
-            for trace in fig.data:
-                if isinstance(trace, go.Bar):
-                    trace.text = [f"{y} N" for y in trace.y]
-                    trace.textposition = "outside"  
-                    trace.textangle = 0
-                    trace.textfont = dict(size=16, color="white")
-                    trace.cliponaxis = False  
-            return fig
-
-
-        # 1. CUÁDRICEPS 70°
-        cuad_der = datos_jugador.get("CUAD 70° Der", 0)
-        cuad_izq = datos_jugador.get("CUAD 70° Izq", 0)
-        fig1 = go.Figure()
-        fig1.add_trace(go.Bar(
-            x=["Derecho", "Izquierdo"],
-            y=[cuad_der, cuad_izq],
-            marker_color=["#33A1FD", "#FD9E02"],
-            text=[f"{cuad_der:.0f} N", f"{cuad_izq:.0f} N"],
-            textposition="outside",
-            textfont=dict(color="white", size=14)
-        ))
-        fig1.update_layout(title="Cuádriceps 70° – Comparación D/I", xaxis_title="Lado", yaxis_title="N (fuerza)")
-        st.plotly_chart(estilo_barras(fig1), use_container_width=True)
-
-        # 2. ISQ WOLLIN
-        isq_der = datos_jugador.get("ISQ Wollin Der", 0)
-        isq_izq = datos_jugador.get("ISQ Wollin Izq", 0)
-        fig2 = go.Figure()
-        fig2.add_trace(go.Bar(
-            x=["Derecho", "Izquierdo"],
-            y=[isq_der, isq_izq],
-            marker_color=["#33A1FD", "#FD9E02"],
-            text=[f"{isq_der:.0f} N", f"{isq_izq:.0f} N"],
-            textposition="outside",
-            textfont=dict(color="white", size=14)
-        ))
-        fig2.update_layout(title="ISQ Wollin – Comparación D/I", xaxis_title="Lado", yaxis_title="N (fuerza)")
-        st.plotly_chart(estilo_barras(fig2), use_container_width=True)
-
-        # 3. IMTP
-        imtp_der = datos_jugador.get("IMTP F. Der (N)", 0)
-        imtp_izq = datos_jugador.get("IMTP F. Izq (N)", 0)
-        fig3 = go.Figure()
-        fig3.add_trace(go.Bar(
-            x=["Derecho", "Izquierdo"],
-            y=[imtp_der, imtp_izq],
-            marker_color=["#33A1FD", "#FD9E02"],
-            text=[f"{imtp_der:.0f} N", f"{imtp_izq:.0f} N"],
-            textposition="outside",
-            textfont=dict(color="white", size=14)
-        ))
-        fig3.update_layout(title="IMTP – Comparación D/I", xaxis_title="Lado", yaxis_title="N (fuerza)")
-        st.plotly_chart(estilo_barras(fig3), use_container_width=True)
-
-        # 4. CMJ Propulsivo / Frenado
-        cmj_prop_der = datos_jugador.get("CMJ F. Der (N)", 0)
-        cmj_prop_izq = datos_jugador.get("CMJ F. Izq (N)", 0)
-        cmj_fren_der = datos_jugador.get("CMJ F. Der (N).1", 0)
-        cmj_fren_izq = datos_jugador.get("CMJ F. Izq (N).1", 0)
-
-        fig4 = go.Figure()
-        fig4.add_trace(go.Bar(
-            name="Propulsivo",
-            x=["Derecho", "Izquierdo"],
-            y=[cmj_prop_der, cmj_prop_izq],
-            marker_color=["#00FF7F", "#00FF7F"],
-            text=[f"{cmj_prop_der:.0f} N", f"{cmj_prop_izq:.0f} N"],
-            textposition="outside",
-            textfont=dict(color="white", size=14)
-        ))
-        fig4.add_trace(go.Bar(
-            name="Frenado",
-            x=["Derecho", "Izquierdo"],
-            y=[cmj_fren_der, cmj_fren_izq],
-            marker_color=["#FF6347", "#FF6347"],
-            text=[f"{cmj_fren_der:.0f} N", f"{cmj_fren_izq:.0f} N"],
-            textposition="outside",
-            textfont=dict(color="white", size=14)
-        ))
-        fig4.update_layout(
-            barmode="group",
-            title="CMJ – Propulsivo vs Frenado",
-            xaxis_title="Lado",
-            yaxis_title="N (fuerza)"
-        )
-        st.plotly_chart(estilo_barras(fig4), use_container_width=True)
-
-        # ========== RADAR DE FUERZA ==========
-        st.markdown("#### 🔸 Perfil de Fuerza – Radar D/I")
-
-        radar_metricas = {
-            "CUAD 70° (N)": ("CUAD 70° Der", "CUAD 70° Izq"),
-            "ISQ Wollin (N)": ("ISQ Wollin Der", "ISQ Wollin Izq"),
-            "IMTP (N)": ("IMTP F. Der (N)", "IMTP F. Izq (N)"),
-            "CMJ Prop (N)": ("CMJ F. Der (N)", "CMJ F. Izq (N)"),
-            "CMJ Fren (N)": ("CMJ F. Der (N).1", "CMJ F. Izq (N).1")
+        # === Selección de métricas de fuerza ===
+        metricas_disponibles = ["CUAD 70°", "ISQ Wollin", "IMTP", "CMJ"]
+        metricas_columnas = {
+            "CUAD 70°": ("CUAD 70° Der", "CUAD 70° Izq"),
+            "ISQ Wollin": ("ISQ Wollin Der", "ISQ Wollin Izq"),
+            "IMTP": ("IMTP F. Der (N)", "IMTP F. Izq (N)"),
+            "CMJ": ("CMJ F. Der (N)", "CMJ F. Izq (N)")
         }
 
+        metricas_seleccionadas = st.multiselect(
+            "Selecciona las métricas a comparar",
+            metricas_disponibles,
+            default=["CUAD 70°", "ISQ Wollin", "IMTP"]
+        )
 
-    etiquetas = list(radar_metricas.keys())
-    valores_der, valores_izq = [], []
+        if metricas_seleccionadas:
+            fig_multifuerza = crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas)
+            st.plotly_chart(fig_multifuerza, use_container_width=True)
+        else:
+            st.info("Selecciona al menos una métrica para visualizar el gráfico.")
 
-    for etiqueta, (m_der, m_izq) in radar_metricas.items():
-        valores_der.append(datos_jugador.get(m_der, 0))
-        valores_izq.append(datos_jugador.get(m_izq, 0))
-
-    max_val = max(valores_der + valores_izq) * 1.1
-
-    fig_radar = go.Figure()
-    fig_radar.add_trace(go.Scatterpolar(
-        r=valores_der,
-        theta=etiquetas,
-        fill='toself',
-        name='Derecho',
-        line=dict(color='#33A1FD', width=3),
-        marker=dict(color='#33A1FD', size=8),
-        mode='lines+markers+text',
-        text=[f"{v:.0f} N" for v in valores_der],
-        textposition='top center'
-    ))
-
-    fig_radar.add_trace(go.Scatterpolar(
-        r=valores_izq,
-        theta=etiquetas,
-        fill='toself',
-        name='Izquierdo',
-        line=dict(color='#FD9E02', width=3),
-        marker=dict(color='#FD9E02', size=8),
-        mode='lines+markers+text',
-        text=[f"{v:.0f} N" for v in valores_izq],
-        textposition='top center'
-    ))
-
-    fig_radar.update_layout(
-        title="🔸 Radar Comparativo de Fuerza D/I",
-        title_font_size=20,
-        polar=dict(
-            bgcolor="#1e1e1e",
-            radialaxis=dict(
-                visible=True,
-                showline=False,
-                showticklabels=False,
-                ticks='',
-                gridcolor='gray',
-                gridwidth=1
-            ),
-            angularaxis=dict(
-                tickfont=dict(size=12, color="white")
-            )
-        ),
-        showlegend=True,
-        paper_bgcolor="#1e1e1e",
-        plot_bgcolor="#1e1e1e",
-        font=dict(color="white"),
-        height=550,
-        legend=dict(orientation="h", y=-0.2)
-    )
-
-    st.plotly_chart(fig_radar, use_container_width=True)
+    elif seccion == "Movilidad":
+        st.markdown("🧘‍♂️ Aquí irán los análisis de movilidad.")
+    elif seccion == "Funcionalidad":
+        st.markdown("🏃‍♂️ Aquí irán los análisis de funcionalidad.")
 
 else:
-    st.warning("👉 Esta visualización detallada de 4 gráficos solo está disponible en la sección 'Fuerza'.")
+    st.warning("👉 Esta visualización detallada está disponible solo en el modo 'Perfil del Jugador'.")
