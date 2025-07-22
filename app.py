@@ -218,6 +218,40 @@ if vista == "Perfil del Jugador":
         if metricas_seleccionadas:
             fig_multifuerza = crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas)
             st.plotly_chart(fig_multifuerza, use_container_width=True)
+
+            st.markdown(f"#### 📋 Media de métricas por grupo – Categoría {categoria}")
+
+            # Filtrar por categoría seleccionada (4ta o Reserva, etc.)
+            df_categoria = df[df["categoria"] == categoria].copy()
+
+            # Columnas de fuerza que queremos analizar
+            columnas_tabla = {
+                "CUAD 70° Der": "CUAD 70° Izq",
+                "ISQ Wollin Der": "ISQ Wollin Izq",
+                "IMTP F. Der (N)": "IMTP F. Izq (N)",
+                "CMJ F. Der (N)": "CMJ F. Izq (N)"
+            }
+
+            # Forzar a número para evitar errores silenciosos
+            for col in list(columnas_tabla.keys()) + list(columnas_tabla.values()):
+                df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
+
+            # Calcular medias
+            media_dict = {}
+            for col_der, col_izq in columnas_tabla.items():
+                media_dict[col_der] = round(df_categoria[col_der].mean(skipna=True), 1)
+                media_dict[col_izq] = round(df_categoria[col_izq].mean(skipna=True), 1)
+
+            # Ordenar columnas como pares
+            column_order = []
+            for der, izq in columnas_tabla.items():
+                column_order.extend([der, izq])
+
+            # Mostrar tabla
+            df_media = pd.DataFrame([media_dict])[column_order]
+            df_media.index = ["Media"]  # Cambia el índice a 'Media'
+            st.dataframe(df_media.style.format("{:.1f}"))
+            
         else:
             st.info("Selecciona al menos una métrica para visualizar el gráfico.")
 
