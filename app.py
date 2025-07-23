@@ -334,9 +334,106 @@ def crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_co
 
     return fig
 
-
-
-
+def crear_radar_zscore(datos_jugador, jugador_nombre):
+	"""
+	Crea un radar chart con los Z-Scores del jugador seleccionado
+	"""
+	# Definir las métricas Z-Score y sus etiquetas
+	z_score_metricas = {
+		'Z SCORE CUAD Der': 'CUAD Der',
+		'Z SCORE CUAD Izq': 'CUAD Izq', 
+		'Z SCORE ISQ Der': 'ISQ Der',
+		'Z SCORE ISQ Izq': 'ISQ Izq',
+		'Z SCORE F PICO': 'F. Pico',
+		'Z SCORE F PROP': 'F. Propulsiva',
+		'Z SCORE F FREN': 'F. Frenado'
+	}
+	
+	# Extraer valores Z-Score del jugador
+	valores = []
+	etiquetas = []
+	
+	for columna, etiqueta in z_score_metricas.items():
+		if columna in datos_jugador.index:
+			valor = datos_jugador[columna]
+			if pd.notna(valor):
+				valores.append(float(valor))
+				etiquetas.append(etiqueta)
+			else:
+				valores.append(0)
+				etiquetas.append(etiqueta)
+	
+	# Crear el radar chart
+	fig = go.Figure()
+	
+	# Agregar la traza del jugador
+	fig.add_trace(go.Scatterpolar(
+		r=valores,
+		theta=etiquetas,
+		fill='toself',
+		name=jugador_nombre,
+		line=dict(color='rgba(220, 38, 38, 0.8)', width=3),
+		fillcolor='rgba(220, 38, 38, 0.2)',
+		marker=dict(
+			color='rgba(220, 38, 38, 1)',
+			size=8,
+			line=dict(color='white', width=2)
+		),
+		hovertemplate='<b>%{theta}</b><br>Z-Score: %{r:.2f}<extra></extra>'
+	))
+	
+	# Agregar líneas de referencia
+	# Línea en Z=0 (promedio)
+	fig.add_trace(go.Scatterpolar(
+		r=[0] * len(etiquetas),
+		theta=etiquetas,
+		mode='lines',
+		name='Promedio (Z=0)',
+		line=dict(color='rgba(128, 128, 128, 0.8)', width=2, dash='dash'),
+		showlegend=True,
+		hovertemplate='<b>Promedio</b><br>Z-Score: 0.00<extra></extra>'
+	))
+	
+	# Configuración del layout
+	fig.update_layout(
+		title=dict(
+			text=f"<b>Radar Z-Scores - {jugador_nombre}</b>",
+			x=0.5,
+			font=dict(size=20, color='white')
+		),
+		polar=dict(
+			radialaxis=dict(
+				visible=True,
+				range=[-3, 3],  # Rango típico para Z-scores
+				tickmode='linear',
+				tick0=-3,
+				dtick=1,
+				gridcolor='rgba(128, 128, 128, 0.3)',
+				linecolor='rgba(128, 128, 128, 0.5)',
+				tickfont=dict(color='white', size=12)
+			),
+			angularaxis=dict(
+				tickfont=dict(color='white', size=13, family='Arial Black'),
+				gridcolor='rgba(128, 128, 128, 0.3)',
+				linecolor='rgba(128, 128, 128, 0.5)'
+			)
+		),
+		plot_bgcolor='rgba(0,0,0,0)',
+		paper_bgcolor='rgba(0,0,0,0)',
+		font=dict(color='white'),
+		legend=dict(
+			x=0.02,
+			y=0.98,
+			bgcolor='rgba(17, 24, 39, 0.8)',
+			bordercolor='rgba(220, 38, 38, 0.5)',
+			borderwidth=1,
+			font=dict(color='white', size=12)
+		),
+		height=500,
+		margin=dict(l=80, r=80, t=80, b=80)
+	)
+	
+	return fig
 
 # ========= CONFIGURACIÓN DE MÉTRICAS ==========
 metricas_por_seccion = {
@@ -374,12 +471,12 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    categoria = st.selectbox("🏆 Categoría", categorias)
+    categoria = st.selectbox("Categoría", categorias)
     jugadores_filtrados = df[df["categoria"] == categoria]["Deportista"].dropna().unique()
-    jugador = st.selectbox("🏃‍♂️ Deportista", jugadores_filtrados)
+    jugador = st.selectbox("Deportista", jugadores_filtrados)
 
-    vista = st.radio("📊 Tipo de Análisis", ["Perfil del Jugador", "Perfil del Grupo", "Comparación Jugador vs Grupo"])
-    seccion = st.radio("💪 Evaluación", ["Fuerza", "Movilidad", "Funcionalidad"])
+    vista = st.radio("Tipo de Análisis", ["Perfil del Jugador", "Perfil del Grupo", "Comparación Jugador vs Grupo"])
+    seccion = st.radio("Evaluación", ["Fuerza", "Movilidad", "Funcionalidad"])
 
     st.markdown("---")
     
@@ -387,15 +484,15 @@ with st.sidebar:
     st.markdown("""
     <div style='background: rgba(220, 38, 38, 0.1); padding: 10px; border-radius: 8px; border-left: 4px solid rgba(220, 38, 38, 1);'>
         <p style='margin: 0; font-size: 12px; color: rgba(255,255,255,0.7);'>
-            📊 <strong>Staff Técnico</strong><br>
-            📅 Evaluación: 1ra Fase<br>
-            🔍 Análisis
+            <strong>Staff Técnico</strong><br>
+            Evaluación: 1ra Fase<br>
+            Análisis
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    exportar = st.button("📄 Exportar Reporte", help="Descargar análisis en PDF")
+    exportar = st.button("Exportar Reporte", help="Descargar análisis en PDF")
 
 # ========= HEADER DEPORTIVO PROFESIONAL ==========
 st.markdown(
@@ -427,14 +524,14 @@ if vista == "Perfil del Jugador":
                 padding: 15px; border-radius: 10px; margin: 20px 0;
                 border-left: 5px solid rgba(220, 38, 38, 1);'>
         <h3 style='margin: 0; color: white; font-size: 22px;'>
-            💪 Análisis de {seccion}
+            Análisis de {seccion}
         </h3>
         <h4 style='margin: 8px 0; color: rgba(255,255,255,1); font-size: 20px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);'>
-            🏃‍♂️ {jugador}
+            {jugador}
         </h4>
         <p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 14px;'>
-            🏆 Categoría: {categoria}<br>
-            📅 Evaluación: 1ra Fase
+            Categoría: {categoria}<br>
+            Evaluación: 1ra Fase
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -442,8 +539,8 @@ if vista == "Perfil del Jugador":
     datos_jugador = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
 
     if seccion == "Fuerza":
-        # === Selección de métricas de fuerza con iconos ===
-        metricas_disponibles = ["🦵 CUAD 70°", "🏃‍♂️ ISQ Wollin", "💪 IMTP", "⚡ CMJ"]
+        # === Selección de métricas de fuerza ===
+        metricas_disponibles = ["CUAD 70°", "ISQ Wollin", "IMTP", "CMJ"]
         metricas_display = ["CUAD 70°", "ISQ Wollin", "IMTP", "CMJ"]
         metricas_columnas = {
             "CUAD 70°": ("CUAD 70° Der", "CUAD 70° Izq"),
@@ -453,9 +550,9 @@ if vista == "Perfil del Jugador":
         }
 
         metricas_seleccionadas_display = st.multiselect(
-            "🎯 Selección de Métricas - Selecciona las evaluaciones de fuerza para el análisis bilateral:",
+            "Selección de Métricas - Selecciona las evaluaciones de fuerza para el análisis bilateral:",
             metricas_disponibles,
-            default=["🦵 CUAD 70°", "🏃‍♂️ ISQ Wollin", "💪 IMTP"]
+            default=["CUAD 70°", "ISQ Wollin", "IMTP"]
         )
         
         # Convertir de display a nombres reales
@@ -467,7 +564,7 @@ if vista == "Perfil del Jugador":
 
         if metricas_seleccionadas:
             # Efecto de carga progresiva
-            with st.spinner('🔄 Generando gráfico interactivo...'):
+            with st.spinner('Generando gráfico interactivo...'):
                 import time
                 time.sleep(0.3)  # Simula carga para mostrar animación
                 fig_multifuerza = crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas)
@@ -491,6 +588,55 @@ if vista == "Perfil del Jugador":
             })
             
             st.markdown("</div>", unsafe_allow_html=True)
+            
+            # === RADAR CHART Z-SCORES ===
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Header para el radar chart
+            st.markdown(f"""
+            <div style='background: linear-gradient(90deg, rgba(59, 130, 246, 0.8), rgba(17, 24, 39, 0.8)); 
+                        padding: 12px; border-radius: 8px; margin: 15px 0;
+                        border-left: 4px solid rgba(59, 130, 246, 1);'>
+                <h4 style='margin: 0; color: white; font-size: 18px;'>
+                    Análisis Z-Score - Perfil Normalizado
+                </h4>
+                <p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 13px;'>
+                    Comparación con la media poblacional (Z=0 = promedio)
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Generar y mostrar radar chart
+            with st.spinner('Generando radar Z-Scores...'):
+                import time
+                time.sleep(0.2)
+                fig_radar = crear_radar_zscore(datos_jugador, jugador)
+            
+            st.plotly_chart(fig_radar, use_container_width=True, config={
+                'displayModeBar': True,
+                'displaylogo': False,
+                'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d'],
+                'toImageButtonOptions': {
+                    'format': 'png',
+                    'filename': f'radar_zscore_{jugador}_{categoria}',
+                    'height': 500,
+                    'width': 800,
+                    'scale': 2
+                }
+            })
+            
+            # Información interpretativa del Z-Score
+            st.markdown("""
+            <div style='background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin: 10px 0;
+                        border-left: 3px solid rgba(59, 130, 246, 1);'>
+                <p style='margin: 0; font-size: 13px; color: rgba(255,255,255,0.9);'>
+                    <strong>Interpretación Z-Score:</strong><br>
+                    • <strong>Z > +1:</strong> Rendimiento superior al promedio<br>
+                    • <strong>Z = 0:</strong> Rendimiento promedio del grupo<br>
+                    • <strong>Z < -1:</strong> Rendimiento inferior al promedio
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
             st.markdown(f"#### Tabla - {jugador}")
 
@@ -550,7 +696,7 @@ if vista == "Perfil del Jugador":
                 media_dict,
                 std_dict
             ])[column_order]
-            df_comparativo.index = [f"🏃‍♂️ {jugador}", f"📅 Media {categoria}", f"📈 Desv. Est. {categoria}"]
+            df_comparativo.index = [f"{jugador}", f"Media {categoria}", f"Desv. Est. {categoria}"]
             
             # Mostrar tabla con estilo
             st.dataframe(
@@ -567,12 +713,12 @@ if vista == "Perfil del Jugador":
             st.info("Selecciona al menos una métrica para visualizar el gráfico.")
 
     elif seccion == "Movilidad":
-        st.markdown("🧘‍♂️ Aquí irán los análisis de movilidad.")
+        st.markdown("Aquí irán los análisis de movilidad.")
     elif seccion == "Funcionalidad":
-        st.markdown("🏃‍♂️ Aquí irán los análisis de funcionalidad.")
+        st.markdown("Aquí irán los análisis de funcionalidad.")
 
 else:
-    st.warning("👉 Esta visualización detallada está disponible solo en el modo 'Perfil del Jugador'.")
+    st.warning("Esta visualización detallada está disponible solo en el modo 'Perfil del Jugador'.")
 
 # ========= FOOTER DEPORTIVO ==========
 st.markdown("<br><br>", unsafe_allow_html=True)
