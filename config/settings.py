@@ -3,8 +3,12 @@ Configuración general de la aplicación
 """
 
 # ========= CONFIGURACIÓN DE RUTAS ==========
-DATA_PATH = "/Users/agustin/Documents/Agustin_2025/Juan Colon/data/1ra evaluación.xlsx"
-ESCUDO_PATH = "/Users/agustin/Documents/Agustin_2025/Juan Colon/data/escudo.png"
+import os
+
+# Rutas relativas para compatibilidad local y Streamlit Cloud
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BASE_DIR, "data", "1ra evaluación.xlsx")
+ESCUDO_PATH = os.path.join(BASE_DIR, "data", "escudo.png")
 
 # ========= CONFIGURACIÓN DE CACHE ==========
 CACHE_TTL = {

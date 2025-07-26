@@ -6,13 +6,24 @@ import pandas as pd
 import streamlit as st
 import json
 import hashlib
+import os
 from config.settings import CACHE_TTL, DATA_PATH
 
 @st.cache_data(ttl=CACHE_TTL['datos_principales'], show_spinner="Cargando datos de evaluaciones...")
 def cargar_evaluaciones(path_excel):
 	"""Carga y procesa datos de evaluaciones con cache optimizado"""
-	df_4ta = pd.read_excel(path_excel, sheet_name="2005-06 (4ta)", header=1)
-	df_reserva = pd.read_excel(path_excel, sheet_name="RESERVA", header=1)
+	# Validar que el archivo existe
+	if not os.path.exists(path_excel):
+		st.error(f"❌ No se encontró el archivo Excel en: {path_excel}")
+		st.info("💡 Asegúrate de que el archivo '1ra evaluación.xlsx' esté en la carpeta 'data/'")
+		st.stop()
+	
+	try:
+		df_4ta = pd.read_excel(path_excel, sheet_name="2005-06 (4ta)", header=1)
+		df_reserva = pd.read_excel(path_excel, sheet_name="RESERVA", header=1)
+	except Exception as e:
+		st.error(f"❌ Error al leer el archivo Excel: {str(e)}")
+		st.stop()
 
 	df_4ta["categoria"] = "4ta"
 	df_reserva["categoria"] = "Reserva"
