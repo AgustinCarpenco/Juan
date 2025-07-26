@@ -59,12 +59,9 @@ Z_SCORE_METRICAS = {
 	'Z SCORE CUAD Izq': 'CUAD Izq',
 	'Z SCORE ISQ Der': 'ISQ Der',
 	'Z SCORE ISQ Izq': 'ISQ Izq',
-	'Z SCORE IMTP Der': 'IMTP Der',
-	'Z SCORE IMTP Izq': 'IMTP Izq',
-	'Z SCORE CMJ FP Der': 'CMJ FP Der',
-	'Z SCORE CMJ FP Izq': 'CMJ FP Izq',
-	'Z SCORE CMJ FF Der': 'CMJ FF Der',
-	'Z SCORE CMJ FF Izq': 'CMJ FF Izq'
+	'Z SCORE F PICO': 'F PICO',
+	'Z SCORE F PROP': 'F PROP',
+	'Z SCORE F FREN': 'F FREN'
 }
 
 # ========= CONFIGURACIÓN DE PLOTLY ==========

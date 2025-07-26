@@ -261,11 +261,9 @@ def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
 	for columna, etiqueta in z_score_metricas.items():
 		if columna in datos_jugador:
 			valor = datos_jugador[columna]
-			if pd.notna(valor) and valor is not None:
+			# Solo agregar si es un número válido y no es texto
+			if pd.notna(valor) and valor is not None and isinstance(valor, (int, float)):
 				valores.append(float(valor))
-				etiquetas.append(etiqueta)
-			else:
-				valores.append(0)
 				etiquetas.append(etiqueta)
 	
 	# Crear el radar chart
@@ -302,15 +300,7 @@ def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
 			),
 			bgcolor=COLORES['fondo_oscuro']
 		),
-		showlegend=True,
-		legend=dict(
-			orientation="h",
-			yanchor="bottom",
-			y=-0.1,
-			xanchor="center",
-			x=0.5,
-			font=dict(color="white", family="Roboto")
-		),
+		showlegend=False,
 		title=dict(
 			text=f"Perfil Z-Score - {jugador_nombre}",
 			font=dict(size=16, color="white", family="Roboto", weight="bold"),
