@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 from visualizations.charts import crear_grafico_multifuerza, crear_radar_zscore
 from utils.data_utils import procesar_datos_categoria, calcular_estadisticas_categoria, preparar_datos_jugador
-from utils.ui_utils import crear_info_zscore
+
 from config.settings import PLOTLY_CONFIG
 
 def analizar_fuerza(df, datos_jugador, jugador, categoria):
@@ -76,8 +76,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		
 		st.plotly_chart(fig_radar, use_container_width=True, config=radar_config)
 		
-		# Información interpretativa del Z-Score
-		crear_info_zscore()
+
 
 		# === TABLA COMPARATIVA ===
 		st.markdown(f"#### Tabla - {jugador}")

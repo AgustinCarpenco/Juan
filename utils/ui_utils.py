@@ -152,16 +152,4 @@ def crear_footer():
 	</div>
 	""", unsafe_allow_html=True)
 
-def crear_info_zscore():
-	"""Crea información interpretativa del Z-Score"""
-	st.markdown("""
-	<div style='background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin: 10px 0;
-				border-left: 3px solid rgba(59, 130, 246, 1);'>
-		<p style='margin: 0; font-size: 13px; color: rgba(255,255,255,0.9);'>
-			<strong>Interpretación Z-Score:</strong><br>
-			• <strong>Z > +1:</strong> Rendimiento superior al promedio<br>
-			• <strong>Z = 0:</strong> Rendimiento promedio del grupo<br>
-			• <strong>Z < -1:</strong> Rendimiento inferior al promedio
-		</p>
-	</div>
-	""", unsafe_allow_html=True)
+

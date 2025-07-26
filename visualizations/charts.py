@@ -127,7 +127,7 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 			fig.add_annotation(
 				text=f"<b>LSI: {lsi_val:.1f}%</b>",
 				x=name,
-				y=max(barras_der[idx], barras_izq[idx]) * 1.35,
+				y=max(barras_der[idx], barras_izq[idx]) * 1.55,
 				showarrow=False,
 				font=dict(size=11, color="white", family="Roboto", weight="bold"),
 				xanchor="center",
@@ -209,8 +209,8 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 		plot_bgcolor=COLORES['fondo_oscuro'],
 		paper_bgcolor=COLORES['fondo_oscuro'],
 		font=dict(color="white", family="Roboto"),
-		height=620,
-		margin=dict(t=110, b=60, l=60, r=60),
+		height=650,
+		margin=dict(t=140, b=60, l=60, r=60),
 		showlegend=True,
 		transition=dict(
 			duration=800,
@@ -284,6 +284,28 @@ def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
 		hovertemplate='<b>%{theta}</b><br>Z-Score: %{r:.2f}<extra></extra>'
 	))
 	
+	# Agregar leyenda interpretativa integrada
+	fig.add_annotation(
+		text="<b>Interpretación Z-Score</b><br>" +
+			 "<span style='color: #22c55e;'>Z > +1:</span> Superior al promedio<br>" +
+			 "<span style='color: #fbbf24;'>Z = 0:</span> Rendimiento promedio<br>" +
+			 "<span style='color: #ef4444;'>Z < -1:</span> Inferior al promedio",
+		x=0.02,
+		y=0.98,
+		xref="paper",
+		yref="paper",
+		xanchor="left",
+		yanchor="top",
+		showarrow=False,
+		font=dict(size=11, color="white", family="Roboto"),
+		align="left",
+		bgcolor="rgba(31, 41, 55, 0.9)",
+		bordercolor="rgba(59, 130, 246, 0.8)",
+		borderwidth=2,
+		borderpad=10,
+		opacity=0.95
+	)
+	
 	fig.update_layout(
 		polar=dict(
 			radialaxis=dict(
@@ -310,7 +332,8 @@ def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
 		plot_bgcolor=COLORES['fondo_oscuro'],
 		paper_bgcolor=COLORES['fondo_oscuro'],
 		font=dict(color="white", family="Roboto"),
-		height=500
+		height=500,
+		margin=dict(t=60, b=40, l=40, r=40)
 	)
 	
 	return fig
