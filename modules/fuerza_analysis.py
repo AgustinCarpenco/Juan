@@ -101,7 +101,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		for der, izq in columnas_tabla.items():
 			column_order.extend([der, izq])
 
-		# Crear DataFrame comparativo
+		# Crear DataFrame comparativo original
 		df_comparativo = pd.DataFrame([
 			jugador_dict,
 			media_dict,
@@ -109,14 +109,23 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		])[column_order]
 		df_comparativo.index = [f"{jugador}", f"Media {categoria}", f"Desv. Est. {categoria}"]
 		
-		# Mostrar tabla con estilo
+		# Transponer tabla para mejor visualización y exportación PDF
+		df_transpuesto = df_comparativo.T
+		df_transpuesto.index.name = "Métrica"
+		
+		# Mostrar tabla transpuesta con estilo optimizado
 		st.dataframe(
-			df_comparativo.style.format("{:.1f}").apply(
-				lambda x: ['background-color: rgba(220, 38, 38, 0.1)' if i == 0 
-						  else 'background-color: rgba(255, 255, 255, 0.05)' if i == 1
-						  else 'background-color: rgba(59, 130, 246, 0.1)' for i in range(len(x))], 
-				axis=0
-			),
+			df_transpuesto.style.format("{:.1f}").apply(
+				lambda x: [
+					'background-color: rgba(220, 38, 38, 0.15); font-weight: bold;',  # Columna jugador
+					'background-color: rgba(255, 255, 255, 0.08);',  # Columna media
+					'background-color: rgba(59, 130, 246, 0.15);'    # Columna desv. est.
+				], axis=1
+			).set_table_styles([
+				{'selector': 'th.col_heading', 'props': 'background-color: rgba(220, 38, 38, 0.3); color: white; font-weight: bold;'},
+				{'selector': 'th.row_heading', 'props': 'background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;'},
+				{'selector': 'td', 'props': 'text-align: center; padding: 8px;'}
+			]),
 			use_container_width=True
 		)
 		
