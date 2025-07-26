@@ -11,6 +11,8 @@ from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
 from modules.fuerza_analysis import analizar_fuerza
+from modules.grupo_analysis import analizar_fuerza_grupo
+from modules.comparacion_analysis import analizar_comparacion_fuerza
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
@@ -57,12 +59,50 @@ def main():
 			st.info("El análisis de funcionalidad estará disponible próximamente.")
 	
 	elif vista == "Perfil del Grupo":
-		st.markdown("### 🔧 Módulo en Desarrollo")
-		st.info("El análisis de grupo estará disponible próximamente.")
+		# Header de sección grupal
+		st.markdown(f"""
+		<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2)); 
+					padding: 20px; border-radius: 15px; margin-bottom: 25px; 
+					border-left: 5px solid rgba(59, 130, 246, 1);'>
+			<h2 style='margin: 0; color: white; font-weight: bold;'>
+				👥 Perfil del Grupo - {categoria}
+			</h2>
+			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
+				Análisis agregado de {seccion} - Valores promedio y estadísticas grupales
+			</p>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		# Análisis por sección
+		if seccion == "Fuerza":
+			analizar_fuerza_grupo(df, categoria)
+			
+		elif seccion == "Movilidad":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("El análisis grupal de movilidad estará disponible próximamente.")
+			
+		elif seccion == "Funcionalidad":
+			st.markdown("### 🔧 Módulo en Desarrollo") 
+			st.info("El análisis grupal de funcionalidad estará disponible próximamente.")
 		
 	elif vista == "Comparación Jugador vs Grupo":
-		st.markdown("### 🔧 Módulo en Desarrollo")
-		st.info("La comparación jugador vs grupo estará disponible próximamente.")
+		# Header de sección comparativa
+		crear_header_seccion(seccion, jugador, categoria)
+		
+		# Obtener datos del jugador seleccionado
+		datos_jugador = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
+		
+		# Análisis por sección
+		if seccion == "Fuerza":
+			analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria)
+			
+		elif seccion == "Movilidad":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("La comparación de movilidad estará disponible próximamente.")
+			
+		elif seccion == "Funcionalidad":
+			st.markdown("### 🔧 Módulo en Desarrollo") 
+			st.info("La comparación de funcionalidad estará disponible próximamente.")
 	
 	else:
 		st.warning("Esta visualización detallada está disponible solo en el modo 'Perfil del Jugador'.")

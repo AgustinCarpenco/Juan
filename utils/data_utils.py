@@ -115,3 +115,68 @@ def limpiar_cache_si_cambio(jugador, categoria):
 		st.session_state.metricas_cache = {}
 		return True
 	return False
+
+# ========= FUNCIONES DE PROCESAMIENTO GRUPAL =========
+
+@st.cache_data(ttl=CACHE_TTL['estadisticas'])
+def calcular_estadisticas_grupo(datos_grupo, metricas_seleccionadas, metricas_columnas):
+	"""Calcula estadísticas descriptivas para el grupo"""
+	import numpy as np
+	
+	estadisticas = {}
+	
+	for metrica in metricas_seleccionadas:
+		if metrica == "CMJ":
+			# CMJ Propulsiva - Filtrar solo valores numéricos
+			val_der_prop = pd.to_numeric(datos_grupo["CMJ F. Der (N)"], errors='coerce').dropna()
+			val_izq_prop = pd.to_numeric(datos_grupo["CMJ F. Izq (N)"], errors='coerce').dropna()
+			val_total_prop = pd.concat([val_der_prop, val_izq_prop])
+			
+			estadisticas[f"{metrica}_Prop"] = {
+				'media': val_total_prop.mean(),
+				'mediana': val_total_prop.median(),
+				'std': val_total_prop.std(),
+				'min': val_total_prop.min(),
+				'max': val_total_prop.max()
+			}
+			
+			# CMJ Frenado - Filtrar solo valores numéricos
+			val_der_fren = pd.to_numeric(datos_grupo["CMJ F. Der (N).1"], errors='coerce').dropna()
+			val_izq_fren = pd.to_numeric(datos_grupo["CMJ F. Izq (N).1"], errors='coerce').dropna()
+			val_total_fren = pd.concat([val_der_fren, val_izq_fren])
+			
+			estadisticas[f"{metrica}_Fren"] = {
+				'media': val_total_fren.mean(),
+				'mediana': val_total_fren.median(),
+				'std': val_total_fren.std(),
+				'min': val_total_fren.min(),
+				'max': val_total_fren.max()
+			}
+		else:
+			col_der, col_izq = metricas_columnas[metrica]
+			# Filtrar solo valores numéricos
+			val_der = pd.to_numeric(datos_grupo[col_der], errors='coerce').dropna()
+			val_izq = pd.to_numeric(datos_grupo[col_izq], errors='coerce').dropna()
+			val_total = pd.concat([val_der, val_izq])
+			
+			estadisticas[metrica] = {
+				'media': val_total.mean(),
+				'mediana': val_total.median(),
+				'std': val_total.std(),
+				'min': val_total.min(),
+				'max': val_total.max()
+			}
+	
+	return estadisticas
+
+@st.cache_data(ttl=CACHE_TTL['preparacion_datos'])
+def preparar_datos_grupo(datos_grupo, categoria):
+	"""Prepara datos del grupo para visualización con cache"""
+	# Filtrar solo jugadores de la categoría
+	datos_filtrados = datos_grupo[datos_grupo['categoria'] == categoria].copy()
+	
+	# Limpiar valores nulos y no numéricos
+	columnas_numericas = datos_filtrados.select_dtypes(include=['number']).columns
+	datos_filtrados = datos_filtrados[columnas_numericas]
+	
+	return datos_filtrados
