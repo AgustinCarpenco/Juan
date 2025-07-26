@@ -4,6 +4,8 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import plotly.graph_objects as go
+from functools import lru_cache
+import hashlib
 
 # ========= CONFIGURACIÓN DE ANIMACIONES ==========
 st.markdown("""
@@ -74,270 +76,370 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ========= CONFIGURACIÓN DE SESSION STATE ==========
+
+# Inicializar session state para optimización
+if 'df_cache' not in st.session_state:
+	st.session_state.df_cache = None
+if 'ultimo_jugador' not in st.session_state:
+	st.session_state.ultimo_jugador = None
+if 'ultima_categoria' not in st.session_state:
+	st.session_state.ultima_categoria = None
+if 'metricas_cache' not in st.session_state:
+	st.session_state.metricas_cache = {}
+
 # ========= FUNCIONES ==========
 
+@st.cache_data(ttl=3600, show_spinner="Cargando datos de evaluaciones...")
 def cargar_evaluaciones(path_excel):
-    df_4ta = pd.read_excel(path_excel, sheet_name="2005-06 (4ta)", header=1)
-    df_reserva = pd.read_excel(path_excel, sheet_name="RESERVA", header=1)
+	"""Carga y procesa datos de evaluaciones con cache optimizado"""
+	df_4ta = pd.read_excel(path_excel, sheet_name="2005-06 (4ta)", header=1)
+	df_reserva = pd.read_excel(path_excel, sheet_name="RESERVA", header=1)
 
-    df_4ta["categoria"] = "4ta"
-    df_reserva["categoria"] = "Reserva"
+	df_4ta["categoria"] = "4ta"
+	df_reserva["categoria"] = "Reserva"
 
-    df_total = pd.concat([df_4ta, df_reserva], ignore_index=True)
-    return df_total
+	df_total = pd.concat([df_4ta, df_reserva], ignore_index=True)
+	return df_total
 
+@lru_cache(maxsize=32)
 def get_base64_image(image_path):
-    with open(image_path, "rb") as img_file:
-        encoded = base64.b64encode(img_file.read()).decode()
-    return encoded
+	"""Convierte imagen a base64 con cache LRU"""
+	with open(image_path, "rb") as img_file:
+		encoded = base64.b64encode(img_file.read()).decode()
+	return encoded
 
-def crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas):
-    barras_der, barras_izq, nombres = [], [], []
-    lsi_labels = {}
+@st.cache_data(ttl=600)
+def crear_hash_jugador(datos_jugador):
+	"""Crea hash único para datos del jugador para optimizar cache"""
+	# Convertir Series a dict para hashear
+	if hasattr(datos_jugador, 'to_dict'):
+		datos_dict = datos_jugador.to_dict()
+	else:
+		datos_dict = dict(datos_jugador)
+	
+	# Crear hash único basado en los datos
+	datos_str = json.dumps(datos_dict, sort_keys=True, default=str)
+	hash_obj = hashlib.md5(datos_str.encode())
+	return hash_obj.hexdigest()
 
-    for metrica in metricas_seleccionadas:
-        if metrica == "CMJ":
-            # Propulsiva
-            val_der_prop = datos_jugador.get("CMJ F. Der (N)", 0)
-            val_izq_prop = datos_jugador.get("CMJ F. Izq (N)", 0)
-            lsi_fp = datos_jugador.get("CMJ FP LSI (%) I/D", None)
+@st.cache_data(ttl=1200)
+def procesar_datos_categoria(df, categoria):
+	"""Procesa y filtra datos por categoría con cache"""
+	df_categoria = df[df["categoria"] == categoria].copy()
+	
+	# FILTRAR filas de resumen estadístico
+	valores_a_excluir = ['MEDIA', 'SD', 'TOTAL EN RIESGO ALTO', 'RIESGO RELATIVO', 
+						'TOTAL EN RIESGO MODERADO', 'TOTAL EN BAJO RIESGO', 
+						'Apellido y Nombre', 'ALTO RIESGO', 'MODERADO RIESGO', 'BAJO RIESGO']
+	
+	df_categoria = df_categoria[
+		(~df_categoria['Deportista'].isin(valores_a_excluir)) & 
+		(df_categoria['Deportista'].notna()) &
+		(~df_categoria['Deportista'].str.contains('RIESGO|MEDIA|TOTAL|SD', case=False, na=False))
+	].copy()
+	
+	return df_categoria
 
-            barras_der.append(val_der_prop)
-            barras_izq.append(val_izq_prop)
-            nombres.append("CMJ Prop")
-            lsi_labels["CMJ Prop"] = lsi_fp
+@st.cache_data(ttl=900)
+def calcular_estadisticas_categoria(df_categoria, columnas_tabla):
+	"""Calcula medias y desviaciones estándar con cache"""
+	# Forzar a número para evitar errores silenciosos
+	for col in list(columnas_tabla.keys()) + list(columnas_tabla.values()):
+		df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
 
-            # Frenado
-            val_der_fren = datos_jugador.get("CMJ F. Der (N).1", 0)
-            val_izq_fren = datos_jugador.get("CMJ F. Izq (N).1", 0)
-            lsi_ff = datos_jugador.get("CMJ FF LSI (%) I/D", None)
+	# Calcular medias del grupo
+	media_dict = {}
+	for col_der, col_izq in columnas_tabla.items():
+		media_dict[col_der] = round(df_categoria[col_der].mean(skipna=True), 1)
+		media_dict[col_izq] = round(df_categoria[col_izq].mean(skipna=True), 1)
 
-            barras_der.append(val_der_fren)
-            barras_izq.append(val_izq_fren)
-            nombres.append("CMJ Fren")
-            lsi_labels["CMJ Fren"] = lsi_ff
-        else:
-            col_der, col_izq = metricas_columnas[metrica]
-            val_der = datos_jugador.get(col_der, 0)
-            val_izq = datos_jugador.get(col_izq, 0)
-            barras_der.append(val_der)
-            barras_izq.append(val_izq)
-            nombres.append(metrica)
+	# Calcular desviaciones estándar del grupo
+	std_dict = {}
+	for col_der, col_izq in columnas_tabla.items():
+		std_dict[col_der] = round(df_categoria[col_der].std(skipna=True), 1)
+		std_dict[col_izq] = round(df_categoria[col_izq].std(skipna=True), 1)
+	
+	return media_dict, std_dict
 
-    fig = go.Figure()
+@st.cache_data(ttl=600)
+def preparar_datos_jugador(datos_jugador, columnas_tabla):
+	"""Prepara datos del jugador para visualización con cache"""
+	jugador_dict = {}
+	for col_der, col_izq in columnas_tabla.items():
+		jugador_dict[col_der] = round(datos_jugador.get(col_der, 0), 1)
+		jugador_dict[col_izq] = round(datos_jugador.get(col_izq, 0), 1)
+	return jugador_dict
 
-    fig.add_trace(go.Bar(
-        x=nombres,
-        y=barras_der,
-        name="🔴 Derecho",
-        marker=dict(
-            color="rgba(220, 38, 38, 0.85)",  # Rojo Colón
-            line=dict(width=2.5, color="rgba(220, 38, 38, 1)"),
-            pattern=dict(
-                shape="",
-                bgcolor="rgba(220, 38, 38, 0.3)",
-                fgcolor="rgba(220, 38, 38, 1)"
-            ),
-            # Simulación de bordes redondeados con gradiente
-            opacity=0.9
-        ),
-        text=[f"{v:.0f} N" for v in barras_der],
-        textposition="outside",
-        textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-        hovertemplate='<b>🔴 Derecho</b><br>%{x}: %{y:.0f} N<br><i>Lado dominante</i><extra></extra>',
-        # Efecto de sombra simulado
-        offsetgroup=1,
-        # Animaciones y hover effects
-        hoverlabel=dict(
-            bgcolor="rgba(220, 38, 38, 0.9)",
-            bordercolor="rgba(220, 38, 38, 1)",
-            font=dict(color="white", family="Roboto")
-        )
-    ))
+def cargar_datos_optimizado(path_excel):
+	"""Carga datos con optimización de session state"""
+	if 'df_cache' not in st.session_state or st.session_state.df_cache is None:
+		st.session_state.df_cache = cargar_evaluaciones(path_excel)
+	return st.session_state.df_cache
 
-    fig.add_trace(go.Bar(
-        x=nombres,
-        y=barras_izq,
-        name="⚫ Izquierdo",
-        marker=dict(
-            color="rgba(31, 41, 55, 0.85)",  # Negro Colón
-            line=dict(width=2.5, color="rgba(31, 41, 55, 1)"),
-            pattern=dict(
-                shape="",
-                bgcolor="rgba(31, 41, 55, 0.3)",
-                fgcolor="rgba(31, 41, 55, 1)"
-            ),
-            # Simulación de bordes redondeados con gradiente
-            opacity=0.9
-        ),
-        text=[f"{v:.0f} N" for v in barras_izq],
-        textposition="outside",
-        textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-        hovertemplate='<b>⚫ Izquierdo</b><br>%{x}: %{y:.0f} N<br><i>Lado no dominante</i><extra></extra>',
-        # Efecto de sombra simulado
-        offsetgroup=2,
-        # Animaciones y hover effects
-        hoverlabel=dict(
-            bgcolor="rgba(31, 41, 55, 0.9)",
-            bordercolor="rgba(31, 41, 55, 1)",
-            font=dict(color="white", family="Roboto")
-        )
-    ))
+def limpiar_cache_si_cambio(jugador, categoria):
+	"""Limpia cache si hay cambio en la selección"""
+	if (st.session_state.get('ultimo_jugador') != jugador or 
+		st.session_state.get('ultima_categoria') != categoria):
+		# Limpiar cache de métricas al cambiar selección
+		st.session_state.metricas_cache = {}
+		return True
+	return False
 
-    # LSI annotations
-    for name in nombres:
-        if name == "CUAD 70°":
-            lsi_val = datos_jugador.get("CUAD LSI (%)", None)
-        elif name == "ISQ Wollin":
-            lsi_val = datos_jugador.get("ISQUIO LSI (%)", None)
-        elif name == "IMTP":
-            lsi_val = datos_jugador.get("IMTP LSI (%)", None)
-        else:
-            lsi_val = lsi_labels.get(name)
+@st.cache_data(ttl=1800, show_spinner="Generando gráfico de fuerza...")
+def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metricas_columnas):
+	"""Crea gráfico de multifuerza con cache optimizado"""
+	# Reconstruir datos del jugador desde hash
+	datos_jugador = datos_jugador_hash
+	barras_der, barras_izq, nombres = [], [], []
+	lsi_labels = {}
 
-        if lsi_val and lsi_val > 0:
-            idx = nombres.index(name)
-            
-            # Determinar color según rango LSI
-            if 90 <= lsi_val <= 110:  # Zona óptima
-                lsi_color = "rgba(50, 205, 50, 0.9)"  # Verde
-                border_color = "rgba(50, 205, 50, 1)"
-            elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
-                lsi_color = "rgba(255, 165, 0, 0.9)"  # Naranja
-                border_color = "rgba(255, 165, 0, 1)"
-            else:  # Zona de riesgo
-                lsi_color = "rgba(255, 69, 0, 0.9)"  # Rojo
-                border_color = "rgba(255, 69, 0, 1)"
-            
-            fig.add_annotation(
-                text=f"<b>LSI: {lsi_val:.1f}%</b>",
-                x=name,
-                y=max(barras_der[idx], barras_izq[idx]) * 1.35,  # Mayor separación
-                showarrow=False,
-                font=dict(size=11, color="white", family="Roboto", weight="bold"),
-                xanchor="center",
-                align="center",
-                bgcolor=lsi_color,
-                bordercolor=border_color,
-                borderwidth=2,
-                borderpad=8,  # Más padding
-                # Simulación de bordes redondeados
-                opacity=0.95
-            )
-    
-    # Agregar logo del club como marca de agua
-    try:
-        escudo_base64 = get_base64_image("/Users/agustin/Documents/Agustin_2025/Juan Colon/data/escudo.png")
-        fig.add_layout_image(
-            dict(
-                source=f"data:image/png;base64,{escudo_base64}",
-                xref="paper", yref="paper",
-                x=0.95, y=0.05,  # Esquina inferior derecha
-                sizex=0.15, sizey=0.15,
-                xanchor="right", yanchor="bottom",
-                opacity=0.1,  # Muy sutil
-                layer="below"
-            )
-        )
-    except:
-        pass  # Si no encuentra el logo, continúa sin él
+	for metrica in metricas_seleccionadas:
+		if metrica == "CMJ":
+			# Propulsiva
+			val_der_prop = datos_jugador.get("CMJ F. Der (N)", 0)
+			val_izq_prop = datos_jugador.get("CMJ F. Izq (N)", 0)
+			lsi_fp = datos_jugador.get("CMJ FP LSI (%) I/D", None)
 
-    fig.update_layout(
-        barmode="group",
-        bargap=0.3,  # Espaciado entre grupos de barras
-        bargroupgap=0.1,  # Espaciado dentro de cada grupo
-        title=dict(
-            text="⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Derecha/Izquierda – Métricas de Fuerza</span>",
-            font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
-            y=0.94,
-            x=0.5,
-            xanchor="center"
-        ),
-        xaxis=dict(
-            title=dict(
-                text="Métrica", 
-                font=dict(size=14, family="Roboto"),
-                standoff=20
-            ),
-            tickfont=dict(size=12, family="Roboto"),
-            showgrid=True,
-            gridwidth=1,
-            gridcolor="rgba(255,255,255,0.1)",
-            tickangle=0,
-            categoryorder="array",
-            categoryarray=nombres
-        ),
-        yaxis=dict(
-            title=dict(
-                text="Fuerza (N)", 
-                font=dict(size=14, family="Roboto"),
-                standoff=15
-            ),
-            tickfont=dict(size=12, family="Roboto"),
-            showgrid=True,
-            gridwidth=1,
-            gridcolor="rgba(255,255,255,0.1)",
-            zeroline=True,
-            zerolinewidth=2,
-            zerolinecolor="rgba(255,255,255,0.3)"
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12, family="Roboto"),
-            bgcolor="rgba(220, 38, 38, 0.2)",  # Fondo rojo sutil
-            bordercolor="rgba(220, 38, 38, 0.5)",
-            borderwidth=2
-        ),
-        plot_bgcolor="rgba(17, 24, 39, 1)",  # Fondo deportivo oscuro
-        paper_bgcolor="rgba(17, 24, 39, 1)",
-        font=dict(color="white", family="Roboto"),
-        height=620,  # Aumentado para acomodar LSI
-        margin=dict(t=110, b=60, l=60, r=60),  # Más margen superior
-        showlegend=True,
-        # Configuración de animaciones
-        transition=dict(
-            duration=800,  # Duración de transiciones en ms
-            easing="cubic-in-out"  # Tipo de animación suave
-        ),
-        # Hover interactions mejoradas
-        hovermode="x unified",  # Hover unificado por categoría
-        hoverdistance=100,  # Distancia de detección del hover
-        spikedistance=1000,  # Distancia para líneas de referencia
-        # Animaciones de carga
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="left",
-                buttons=list([
-                    dict(
-                        args=[{"visible": [True, True]},
-                              {"title": "Comparación D/I – Métricas seleccionadas",
-                               "annotations": []}],
-                        label="Actualizar",
-                        method="restyle"
-                    )
-                ]),
-                pad={"r": 10, "t": 10},
-                showactive=False,
-                x=0.01,
-                xanchor="left",
-                y=1.02,
-                yanchor="top",
-                visible=False  # Oculto por defecto
-            ),
-        ]
-    )
+			barras_der.append(val_der_prop)
+			barras_izq.append(val_izq_prop)
+			nombres.append("CMJ Prop")
+			lsi_labels["CMJ Prop"] = lsi_fp
 
-    return fig
+			# Frenado
+			val_der_fren = datos_jugador.get("CMJ F. Der (N).1", 0)
+			val_izq_fren = datos_jugador.get("CMJ F. Izq (N).1", 0)
+			lsi_ff = datos_jugador.get("CMJ FF LSI (%) I/D", None)
 
-def crear_radar_zscore(datos_jugador, jugador_nombre):
+			barras_der.append(val_der_fren)
+			barras_izq.append(val_izq_fren)
+			nombres.append("CMJ Fren")
+			lsi_labels["CMJ Fren"] = lsi_ff
+		else:
+			col_der, col_izq = metricas_columnas[metrica]
+			val_der = datos_jugador.get(col_der, 0)
+			val_izq = datos_jugador.get(col_izq, 0)
+			barras_der.append(val_der)
+			barras_izq.append(val_izq)
+			nombres.append(metrica)
+
+	fig = go.Figure()
+
+	fig.add_trace(go.Bar(
+		x=nombres,
+		y=barras_der,
+		name="🔴 Derecho",
+		marker=dict(
+			color="rgba(220, 38, 38, 0.85)",  # Rojo Colón
+			line=dict(width=2.5, color="rgba(220, 38, 38, 1)"),
+			pattern=dict(
+				shape="",
+				bgcolor="rgba(220, 38, 38, 0.3)",
+				fgcolor="rgba(220, 38, 38, 1)"
+			),
+			# Simulación de bordes redondeados con gradiente
+			opacity=0.9
+		),
+		text=[f"{v:.0f} N" for v in barras_der],
+		textposition="outside",
+		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+		hovertemplate='<b>🔴 Derecho</b><br>%{x}: %{y:.0f} N<br><i>Lado dominante</i><extra></extra>',
+		# Efecto de sombra simulado
+		offsetgroup=1,
+		# Animaciones y hover effects
+		hoverlabel=dict(
+			bgcolor="rgba(220, 38, 38, 0.9)",
+			bordercolor="rgba(220, 38, 38, 1)",
+			font=dict(color="white", family="Roboto")
+		)
+	))
+
+	fig.add_trace(go.Bar(
+		x=nombres,
+		y=barras_izq,
+		name="⚫ Izquierdo",
+		marker=dict(
+			color="rgba(31, 41, 55, 0.85)",  # Negro Colón
+			line=dict(width=2.5, color="rgba(31, 41, 55, 1)"),
+			pattern=dict(
+				shape="",
+				bgcolor="rgba(31, 41, 55, 0.3)",
+				fgcolor="rgba(31, 41, 55, 1)"
+			),
+			# Simulación de bordes redondeados con gradiente
+			opacity=0.9
+		),
+		text=[f"{v:.0f} N" for v in barras_izq],
+		textposition="outside",
+		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+		hovertemplate='<b>⚫ Izquierdo</b><br>%{x}: %{y:.0f} N<br><i>Lado no dominante</i><extra></extra>',
+		# Efecto de sombra simulado
+		offsetgroup=2,
+		# Animaciones y hover effects
+		hoverlabel=dict(
+			bgcolor="rgba(31, 41, 55, 0.9)",
+			bordercolor="rgba(31, 41, 55, 1)",
+			font=dict(color="white", family="Roboto")
+		)
+	))
+
+	# LSI annotations
+	for name in nombres:
+		if name == "CUAD 70°":
+			lsi_val = datos_jugador.get("CUAD LSI (%)", None)
+		elif name == "ISQ Wollin":
+			lsi_val = datos_jugador.get("ISQUIO LSI (%)", None)
+		elif name == "IMTP":
+			lsi_val = datos_jugador.get("IMTP LSI (%)", None)
+		else:
+			lsi_val = lsi_labels.get(name)
+
+		if lsi_val and lsi_val > 0:
+			idx = nombres.index(name)
+			
+			# Determinar color según rango LSI
+			if 90 <= lsi_val <= 110:  # Zona óptima
+				lsi_color = "rgba(50, 205, 50, 0.9)"  # Verde
+				border_color = "rgba(50, 205, 50, 1)"
+			elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
+				lsi_color = "rgba(255, 165, 0, 0.9)"  # Naranja
+				border_color = "rgba(255, 165, 0, 1)"
+			else:  # Zona de riesgo
+				lsi_color = "rgba(255, 69, 0, 0.9)"  # Rojo
+				border_color = "rgba(255, 69, 0, 1)"
+			
+			fig.add_annotation(
+				text=f"<b>LSI: {lsi_val:.1f}%</b>",
+				x=name,
+				y=max(barras_der[idx], barras_izq[idx]) * 1.35,  # Mayor separación
+				showarrow=False,
+				font=dict(size=11, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				align="center",
+				bgcolor=lsi_color,
+				bordercolor=border_color,
+				borderwidth=2,
+				borderpad=8,  # Más padding
+				# Simulación de bordes redondeados
+				opacity=0.95
+			)
+	
+	# Agregar logo del club como marca de agua
+	try:
+		escudo_base64 = get_base64_image("/Users/agustin/Documents/Agustin_2025/Juan Colon/data/escudo.png")
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,  # Esquina inferior derecha
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,  # Muy sutil
+				layer="below"
+			)
+		)
+	except:
+		pass  # Si no encuentra el logo, continúa sin él
+
+	fig.update_layout(
+		barmode="group",
+		bargap=0.3,  # Espaciado entre grupos de barras
+		bargroupgap=0.1,  # Espaciado dentro de cada grupo
+		title=dict(
+			text="⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Derecha/Izquierda – Métricas de Fuerza</span>",
+			font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
+			y=0.94,
+			x=0.5,
+			xanchor="center"
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0,
+			categoryorder="array",
+			categoryarray=nombres
+		),
+		yaxis=dict(
+			title=dict(
+				text="Fuerza (N)", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=12, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",  # Fondo rojo sutil
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		plot_bgcolor="rgba(17, 24, 39, 1)",  # Fondo deportivo oscuro
+		paper_bgcolor="rgba(17, 24, 39, 1)",
+		font=dict(color="white", family="Roboto"),
+		height=620,  # Aumentado para acomodar LSI
+		margin=dict(t=110, b=60, l=60, r=60),  # Más margen superior
+		showlegend=True,
+		# Configuración de animaciones
+		transition=dict(
+			duration=800,  # Duración de transiciones en ms
+			easing="cubic-in-out"  # Tipo de animación suave
+		),
+		# Hover interactions mejoradas
+		hovermode="x unified",  # Hover unificado por categoría
+		hoverdistance=100,  # Distancia de detección del hover
+		spikedistance=1000,  # Distancia para líneas de referencia
+		# Animaciones de carga
+		updatemenus=[
+			dict(
+				type="buttons",
+				direction="left",
+				buttons=list([
+					dict(
+						args=[{"visible": [True, True]},
+							  {"title": "Comparación D/I – Métricas seleccionadas",
+							   "annotations": []}],
+						label="Actualizar",
+						method="restyle"
+					)
+				]),
+				pad={"r": 10, "t": 10},
+				showactive=False,
+				x=0.01,
+				xanchor="left",
+				y=1.02,
+				yanchor="top",
+				visible=False  # Oculto por defecto
+			),
+		]
+	)
+
+	return fig
+
+@st.cache_data(ttl=1800, show_spinner="Generando radar Z-Score...")
+def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
 	"""
-	Crea un radar chart con los Z-Scores del jugador seleccionado
+	Crea un radar chart con los Z-Scores del jugador seleccionado - Optimizado con cache
 	"""
+	# Reconstruir datos del jugador desde hash
+	datos_jugador = datos_jugador_hash
 	# Definir las métricas Z-Score y sus etiquetas
 	z_score_metricas = {
 		'Z SCORE CUAD Der': 'CUAD Der',
@@ -354,9 +456,9 @@ def crear_radar_zscore(datos_jugador, jugador_nombre):
 	etiquetas = []
 	
 	for columna, etiqueta in z_score_metricas.items():
-		if columna in datos_jugador.index:
+		if columna in datos_jugador:
 			valor = datos_jugador[columna]
-			if pd.notna(valor):
+			if pd.notna(valor) and valor is not None:
 				valores.append(float(valor))
 				etiquetas.append(etiqueta)
 			else:
@@ -453,8 +555,8 @@ metricas_por_seccion = {
     }
 }
 
-# ========= CARGA DE DATOS ==========
-df = cargar_evaluaciones("/Users/agustin/Documents/Agustin_2025/Juan Colon/data/1ra evaluación.xlsx")
+# ========= CARGA DE DATOS OPTIMIZADA ==========
+df = cargar_datos_optimizado("/Users/agustin/Documents/Agustin_2025/Juan Colon/data/1ra evaluación.xlsx")
 categorias = df["categoria"].dropna().unique()
 
 # ========= CONFIGURACIÓN DE ESCUDO ==========
@@ -471,9 +573,34 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    categoria = st.selectbox("Categoría", categorias)
-    jugadores_filtrados = df[df["categoria"] == categoria]["Deportista"].dropna().unique()
-    jugador = st.selectbox("Deportista", jugadores_filtrados)
+    # Selectores optimizados con callbacks
+    categoria = st.selectbox(
+        "Categoría", 
+        categorias,
+        key="categoria_selector",
+        help="Selecciona la categoría para filtrar jugadores"
+    )
+    
+    # Cache de jugadores por categoría
+    @st.cache_data(ttl=1800)
+    def obtener_jugadores_categoria(df, categoria_sel):
+        return df[df["categoria"] == categoria_sel]["Deportista"].dropna().unique()
+    
+    jugadores_filtrados = obtener_jugadores_categoria(df, categoria)
+    
+    jugador = st.selectbox(
+        "Deportista", 
+        jugadores_filtrados,
+        key="jugador_selector",
+        help="Selecciona el deportista para análisis individual"
+    )
+    
+    # Limpiar cache si hay cambio en la selección
+    limpiar_cache_si_cambio(jugador, categoria)
+    
+    # Actualizar session state
+    st.session_state.ultimo_jugador = jugador
+    st.session_state.ultima_categoria = categoria
 
     vista = st.radio("Tipo de Análisis", ["Perfil del Jugador", "Perfil del Grupo", "Comparación Jugador vs Grupo"])
     seccion = st.radio("Evaluación", ["Fuerza", "Movilidad", "Funcionalidad"])
@@ -563,11 +690,11 @@ if vista == "Perfil del Jugador":
                     metricas_seleccionadas.append(metricas_display[i])
 
         if metricas_seleccionadas:
-            # Efecto de carga progresiva
-            with st.spinner('Generando gráfico interactivo...'):
-                import time
-                time.sleep(0.3)  # Simula carga para mostrar animación
-                fig_multifuerza = crear_grafico_multifuerza(datos_jugador, metricas_seleccionadas, metricas_columnas)
+            # Optimización con cache - crear hash del jugador
+            datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, 'to_dict') else dict(datos_jugador)
+            
+            # Generar gráfico con cache optimizado
+            fig_multifuerza = crear_grafico_multifuerza(datos_jugador_dict, tuple(metricas_seleccionadas), metricas_columnas)
             
             # Mostrar gráfico con animación
             st.markdown("""
@@ -606,11 +733,8 @@ if vista == "Perfil del Jugador":
             </div>
             """, unsafe_allow_html=True)
             
-            # Generar y mostrar radar chart
-            with st.spinner('Generando radar Z-Scores...'):
-                import time
-                time.sleep(0.2)
-                fig_radar = crear_radar_zscore(datos_jugador, jugador)
+            # Generar radar chart con cache optimizado
+            fig_radar = crear_radar_zscore(datos_jugador_dict, jugador)
             
             st.plotly_chart(fig_radar, use_container_width=True, config={
                 'displayModeBar': True,
@@ -640,20 +764,8 @@ if vista == "Perfil del Jugador":
 
             st.markdown(f"#### Tabla - {jugador}")
 
-            # Filtrar por categoría seleccionada
-            df_categoria = df[df["categoria"] == categoria].copy()
-            
-            # FILTRAR filas de resumen estadístico que no son jugadores reales
-            valores_a_excluir = ['MEDIA', 'SD', 'TOTAL EN RIESGO ALTO', 'RIESGO RELATIVO', 
-                               'TOTAL EN RIESGO MODERADO', 'TOTAL EN BAJO RIESGO', 
-                               'Apellido y Nombre', 'ALTO RIESGO', 'MODERADO RIESGO', 'BAJO RIESGO']
-            
-            # Filtrar solo jugadores reales (excluir filas de resumen y NaN)
-            df_categoria = df_categoria[
-                (~df_categoria['Deportista'].isin(valores_a_excluir)) & 
-                (df_categoria['Deportista'].notna()) &
-                (~df_categoria['Deportista'].str.contains('RIESGO|MEDIA|TOTAL|SD', case=False, na=False))
-            ].copy()
+            # Usar función optimizada con cache para procesar datos
+            df_categoria = procesar_datos_categoria(df, categoria)
             
             # Columnas de fuerza que queremos analizar
             columnas_tabla = {
@@ -663,27 +775,9 @@ if vista == "Perfil del Jugador":
                 "CMJ F. Der (N)": "CMJ F. Izq (N)"
             }
 
-            # Forzar a número para evitar errores silenciosos
-            for col in list(columnas_tabla.keys()) + list(columnas_tabla.values()):
-                df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
-
-            # Datos del jugador seleccionado
-            jugador_dict = {}
-            for col_der, col_izq in columnas_tabla.items():
-                jugador_dict[col_der] = round(datos_jugador.get(col_der, 0), 1)
-                jugador_dict[col_izq] = round(datos_jugador.get(col_izq, 0), 1)
-
-            # Calcular medias del grupo
-            media_dict = {}
-            for col_der, col_izq in columnas_tabla.items():
-                media_dict[col_der] = round(df_categoria[col_der].mean(skipna=True), 1)
-                media_dict[col_izq] = round(df_categoria[col_izq].mean(skipna=True), 1)
-
-            # Calcular desviaciones estándar del grupo
-            std_dict = {}
-            for col_der, col_izq in columnas_tabla.items():
-                std_dict[col_der] = round(df_categoria[col_der].std(skipna=True), 1)
-                std_dict[col_izq] = round(df_categoria[col_izq].std(skipna=True), 1)
+            # Usar funciones optimizadas con cache
+            jugador_dict = preparar_datos_jugador(datos_jugador_dict, columnas_tabla)
+            media_dict, std_dict = calcular_estadisticas_categoria(df_categoria, columnas_tabla)
 
             # Ordenar columnas como pares
             column_order = []
