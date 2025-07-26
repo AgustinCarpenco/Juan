@@ -56,15 +56,11 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		
 		# Header para el radar chart
 		st.markdown(f"""
-		<div style='background: linear-gradient(90deg, rgba(59, 130, 246, 0.8), rgba(17, 24, 39, 0.8)); 
-					padding: 12px; border-radius: 8px; margin: 15px 0;
-					border-left: 4px solid rgba(59, 130, 246, 1);'>
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1);'>
 			<h4 style='margin: 0; color: white; font-size: 18px;'>
-				Análisis Z-Score - Perfil Normalizado
+				Análisis Z-Score 
 			</h4>
-			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 13px;'>
-				Comparación con la media poblacional (Z=0 = promedio)
-			</p>
 		</div>
 		""", unsafe_allow_html=True)
 		
