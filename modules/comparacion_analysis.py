@@ -388,10 +388,10 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 	return fig
 
 
-@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando radar comparación Z-Score...")
 def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 	"""
-	Crea radar de comparación Z-Score jugador vs grupo en un solo gráfico
+	Crea radar de comparación Z-Score jugador vs grupo en un solo gráfico - Estilo unificado
 	"""
 	# Datos del jugador
 	datos_jugador = {}
@@ -422,7 +422,7 @@ def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 	# Crear figura polar única
 	fig = go.Figure()
 	
-	# Agregar serie del jugador individual
+	# Agregar serie del jugador individual (estilo idéntico a módulos individuales)
 	fig.add_trace(
 		go.Scatterpolar(
 			r=valores_jugador,
@@ -436,7 +436,7 @@ def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 		)
 	)
 	
-	# Agregar serie del grupo promedio
+	# Agregar serie del grupo promedio (estilo idéntico a módulos grupales)
 	fig.add_trace(
 		go.Scatterpolar(
 			r=valores_grupo,
@@ -450,60 +450,65 @@ def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 		)
 	)
 	
-	# Configuración de layout
+	# Agregar leyenda interpretativa integrada (estilo unificado)
+	fig.add_annotation(
+		text="<b>Interpretación Z-Score</b><br>" +
+			 "<span style='color: #22c55e;'>Z > +1:</span> Superior al promedio<br>" +
+			 "<span style='color: #fbbf24;'>Z = 0:</span> Rendimiento promedio<br>" +
+			 "<span style='color: #ef4444;'>Z < -1:</span> Inferior al promedio",
+		x=0.02,
+		y=0.98,
+		xref="paper",
+		yref="paper",
+		xanchor="left",
+		yanchor="top",
+		showarrow=False,
+		font=dict(size=11, color="white", family="Roboto"),
+		align="left",
+		bgcolor="rgba(31, 41, 55, 0.9)",
+		bordercolor="rgba(59, 130, 246, 0.8)",
+		borderwidth=2,
+		borderpad=10,
+		opacity=0.95
+	)
+	
+	# Configuración de layout (estilo unificado con otros módulos)
 	fig.update_layout(
-		title=dict(
-			text="⚽ Comparación Z-Score: Jugador vs Grupo – Atlético Colón ⚽",
-			x=0.5,
-			font=dict(size=18, color="white", family="Roboto", weight="bold")
+		polar=dict(
+			radialaxis=dict(
+				visible=True,
+				range=[-3, 3],
+				tickfont=dict(size=10, color="white"),
+				gridcolor="rgba(255,255,255,0.3)",
+				linecolor="rgba(255,255,255,0.5)"
+			),
+			angularaxis=dict(
+				tickfont=dict(size=11, color="white", family="Roboto"),
+				linecolor="rgba(255,255,255,0.5)",
+				gridcolor="rgba(255,255,255,0.2)"
+			),
+			bgcolor=COLORES['fondo_oscuro']
 		),
+		showlegend=True,
+		title=dict(
+			text=f"Comparación Z-Score - {jugador_nombre} vs {categoria}",
+			font=dict(size=16, color="white", family="Roboto", weight="bold"),
+			x=0.5,
+			xanchor="center"
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
 		height=500,
-		plot_bgcolor='rgba(0,0,0,0)',
-		paper_bgcolor='rgba(0,0,0,0)',
-		font=dict(family="Roboto", color="white"),
-		margin=dict(l=50, r=50, t=80, b=50),
+		margin=dict(t=60, b=40, l=40, r=40),
 		legend=dict(
 			x=0.85, y=0.15,
 			xanchor="left", yanchor="bottom",
-			bgcolor="rgba(40, 40, 40, 0.9)",
+			bgcolor="rgba(31, 41, 55, 0.9)",
 			bordercolor="rgba(255,255,255,0.3)",
 			borderwidth=1,
 			font=dict(size=11, color="white", family="Roboto")
 		)
-	)
-	
-	# Configurar polar
-	fig.update_polars(
-		radialaxis=dict(
-			visible=True,
-			range=[-3, 3],
-			tickfont=dict(size=10, color="white"),
-			gridcolor="rgba(255,255,255,0.3)",
-			linecolor="rgba(255,255,255,0.3)"
-		),
-		angularaxis=dict(
-			tickfont=dict(size=11, color="white", family="Roboto"),
-			linecolor="rgba(255,255,255,0.3)",
-			gridcolor="rgba(255,255,255,0.3)"
-		),
-		bgcolor="rgba(0,0,0,0)"
-	)
-	
-	# Leyenda interpretativa
-	fig.add_annotation(
-		text="<b>Interpretación Z-Score:</b><br>" +
-			 "🟢 Excelente: > 1.5<br>" +
-			 "🔵 Bueno: 0.5 a 1.5<br>" +
-			 "🟡 Promedio: -0.5 a 0.5<br>" +
-			 "🟠 Bajo promedio: -1.5 a -0.5<br>" +
-			 "🔴 Deficiente: < -1.5",
-		xref="paper", yref="paper",
-		x=0.02, y=0.98,
-		xanchor="left", yanchor="top",
-		bgcolor="rgba(40, 40, 40, 0.9)",
-		bordercolor=COLORES['azul_zscore'],
-		borderwidth=2,
-		font=dict(size=10, color="white", family="Roboto")
 	)
 	
 	return fig
@@ -701,36 +706,6 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 				use_container_width=True
 			)
 		
-		# Interpretación - Estilo idéntico al gráfico grupal
-		st.markdown(f"""
-		<div style='background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;'>
-			<h4 style='color: white; margin-top: 0;'>📖 Interpretación del Gráfico de Comparación</h4>
-			<div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;'>
-				<div>
-					<h5 style='color: #DC2626; margin: 0 0 8px 0;'>👤 JUGADOR INDIVIDUAL ({jugador})</h5>
-					<ul style='color: rgba(255,255,255,0.9); margin: 0; font-size: 13px;'>
-						<li><strong>Barras sólidas</strong> con estilo estándar</li>
-						<li><strong>Valores exactos</strong> del jugador</li>
 
-						<li><strong>Mismo estilo</strong> que gráfico individual</li>
-					</ul>
-				</div>
-				<div>
-					<h5 style='color: #3B82F6; margin: 0 0 8px 0;'>👥 PROMEDIO GRUPAL ({categoria})</h5>
-					<ul style='color: rgba(255,255,255,0.9); margin: 0; font-size: 13px;'>
-						<li><strong>Mismo estilo</strong> que gráfico grupal</li>
-						<li><strong>Barras de error</strong> muestran ±SD</li>
-						<li><strong>Valores promedio</strong> del grupo</li>
-						<li><strong>Consistencia visual</strong> total</li>
-					</ul>
-				</div>
-			</div>
-			<div style='margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);'>
-				<p style='color: rgba(255,255,255,0.8); margin: 0; font-size: 13px; text-align: center;'>
-					<strong>Comparación:</strong> Estilo visual idéntico a los gráficos individuales y grupales para máxima consistencia
-				</p>
-			</div>
-		</div>
-		""")
 	else:
 		st.warning("⚠️ Selecciona al menos una métrica para mostrar la comparación.")
