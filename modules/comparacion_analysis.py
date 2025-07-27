@@ -113,7 +113,7 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		y=barras_jugador_der,
 		name=f"🔴 {jugador_nombre} (Der)",
 		marker=dict(
-			color=COLORES['rojo_colon'],
+			color=COLORES['rojo_colon'],  # Rojo para jugador derecho
 			pattern=dict(
 				shape="",
 				bgcolor="rgba(220, 38, 38, 0.3)",
@@ -164,24 +164,24 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		x=nombres,
 		y=barras_grupo_der,
 		error_y=dict(type='data', array=std_grupo_der, visible=True, color='rgba(255,255,255,0.3)', thickness=0),
-		name=f"🔴 {categoria} Promedio (Der)",
+		name=f"🔵 {categoria} Promedio (Der)",
 		marker=dict(
-			color=COLORES['rojo_colon'],
+			color="rgba(59, 130, 246, 1)",  # Azul para grupo derecho
 			pattern=dict(
 				shape="",
-				bgcolor="rgba(220, 38, 38, 0.3)",
-				fgcolor="rgba(220, 38, 38, 1)"
+				bgcolor="rgba(59, 130, 246, 0.3)",
+				fgcolor="rgba(59, 130, 246, 1)"
 			),
 			opacity=0.9
 		),
 		text=[f"{v:.0f} N" for v in barras_grupo_der],
 		textposition="outside",
 		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-		hovertemplate=f'<b>🔴 {categoria} (Derecho)</b><br>%{{x}}: %{{y:.0f}} N<br><i>👥 PROMEDIO GRUPAL ± %{{error_y.array:.0f}}</i><extra></extra>',
+		hovertemplate=f'<b>🔵 {categoria} (Derecho)</b><br>%{{x}}: %{{y:.0f}} N<br><i>👥 PROMEDIO GRUPAL ± %{{error_y.array:.0f}}</i><extra></extra>',
 		offsetgroup=3,
 		hoverlabel=dict(
-			bgcolor="rgba(220, 38, 38, 0.8)",
-			bordercolor="rgba(220, 38, 38, 1)",
+			bgcolor="rgba(59, 130, 246, 0.8)",
+			bordercolor="rgba(59, 130, 246, 1)",
 			font=dict(color="white", family="Roboto")
 		)
 	))
@@ -191,24 +191,24 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		x=nombres,
 		y=barras_grupo_izq,
 		error_y=dict(type='data', array=std_grupo_izq, visible=True, color='rgba(255,255,255,0.3)', thickness=0),
-		name=f"⚫ {categoria} Promedio (Izq)",
+		name=f"🟢 {categoria} Promedio (Izq)",
 		marker=dict(
-			color=COLORES['negro_colon'],
+			color="rgba(16, 185, 129, 1)",  # Verde para grupo izquierdo
 			pattern=dict(
 				shape="",
-				bgcolor="rgba(31, 41, 55, 0.3)",
-				fgcolor="rgba(31, 41, 55, 1)"
+				bgcolor="rgba(16, 185, 129, 0.3)",
+				fgcolor="rgba(16, 185, 129, 1)"
 			),
 			opacity=0.9
 		),
 		text=[f"{v:.0f} N" for v in barras_grupo_izq],
 		textposition="outside",
 		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-		hovertemplate=f'<b>⚫ {categoria} (Izquierdo)</b><br>%{{x}}: %{{y:.0f}} N<br><i>👥 PROMEDIO GRUPAL ± %{{error_y.array:.0f}}</i><extra></extra>',
+		hovertemplate=f'<b>🟢 {categoria} (Izquierdo)</b><br>%{{x}}: %{{y:.0f}} N<br><i>👥 PROMEDIO GRUPAL ± %{{error_y.array:.0f}}</i><extra></extra>',
 		offsetgroup=4,
 		hoverlabel=dict(
-			bgcolor="rgba(31, 41, 55, 0.8)",
-			bordercolor="rgba(31, 41, 55, 1)",
+			bgcolor="rgba(16, 185, 129, 0.8)",
+			bordercolor="rgba(16, 185, 129, 1)",
 			font=dict(color="white", family="Roboto")
 		)
 	))
@@ -267,7 +267,7 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text=f"⚽ Comparación: {jugador_nombre} vs {categoria} – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Individual vs Promedio Grupal – Métricas de Fuerza</span>",
+			text=f"{jugador_nombre} vs Promedio del Grupo",
 			font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
@@ -542,18 +542,7 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 	"""
 	Análisis completo de comparación jugador vs grupo para fuerza
 	"""
-	st.markdown(f"""
-	<div style='background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(59, 130, 246, 0.2)); 
-				padding: 20px; border-radius: 15px; margin-bottom: 25px; 
-				border-left: 5px solid rgba(220, 38, 38, 1);'>
-		<h2 style='margin: 0; color: white; font-weight: bold;'>
-			🔄 Comparación: {jugador} vs {categoria}
-		</h2>
-		<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
-			Análisis comparativo de rendimiento individual vs promedio grupal
-		</p>
-	</div>
-	""", unsafe_allow_html=True)
+
 	
 	# Selección de métricas (igual que en el individual)
 	metricas_disponibles = ["CUAD 70°", "ISQ Wollin", "IMTP", "CMJ"]
@@ -564,7 +553,7 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 	)
 	
 	if metricas_seleccionadas:
-		st.markdown("### 📊 Comparación Individual vs Grupal")
+		st.markdown(f"### {jugador} vs Grupal")
 		
 		with st.spinner("Generando gráfico comparativo..."):
 			fig_comparacion = crear_grafico_comparacion_multifuerza(df, datos_jugador, categoria, jugador, metricas_seleccionadas)

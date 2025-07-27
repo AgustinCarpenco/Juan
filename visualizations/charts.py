@@ -475,7 +475,7 @@ def crear_grafico_multifuerza_grupo(datos_grupo, metricas_seleccionadas, metrica
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text=f"⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Análisis Grupal {categoria} – Métricas de Fuerza</span>",
+			text=f"Análisis Grupal {categoria} – Métricas de Fuerza",
 			font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
