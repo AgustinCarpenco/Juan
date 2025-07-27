@@ -577,6 +577,62 @@ def calcular_metricas_comparacion(df, jugador_data, categoria, jugador_nombre):
 	return comparaciones
 
 
+def crear_tabla_comparacion_jugador_grupo(df, datos_jugador, categoria, jugador, metricas_seleccionadas):
+	"""
+	Crea una tabla comparativa entre el jugador y las estadísticas del grupo
+	"""
+	# Mapeo de métricas a columnas
+	metricas_columnas = {
+		"CUAD 70°": ("CUAD 70° Der", "CUAD 70° Izq"),
+		"ISQ Wollin": ("ISQ Wollin Der", "ISQ Wollin Izq"),
+		"IMTP": ("IMTP F. Der (N)", "IMTP F. Izq (N)"),
+		"CMJ": ("CMJ F. Der (N)", "CMJ F. Izq (N)")
+	}
+	
+	# Obtener datos del grupo (excluyendo al jugador actual para evitar sesgo)
+	datos_grupo = df[(df["categoria"] == categoria) & (df["Deportista"] != jugador)]
+	
+	# Construir filas de la tabla
+	filas_tabla = []
+	indices_tabla = []
+	
+	for metrica in metricas_seleccionadas:
+		if metrica in metricas_columnas:
+			col_der, col_izq = metricas_columnas[metrica]
+			
+			# Valores del jugador - Convertir a numérico
+			jugador_der = pd.to_numeric(datos_jugador[col_der], errors='coerce') if col_der in datos_jugador.index else 0
+			jugador_izq = pd.to_numeric(datos_jugador[col_izq], errors='coerce') if col_izq in datos_jugador.index else 0
+			
+			# Estadísticas del grupo - Filtrar solo valores numéricos
+			grupo_der = pd.to_numeric(datos_grupo[col_der], errors='coerce').dropna()
+			grupo_izq = pd.to_numeric(datos_grupo[col_izq], errors='coerce').dropna()
+			
+			# Derecha
+			if len(grupo_der) > 0 and pd.notna(jugador_der):
+				media_grupo_der = grupo_der.mean()
+				std_grupo_der = grupo_der.std()
+				filas_tabla.append([jugador_der, media_grupo_der, std_grupo_der])
+				indices_tabla.append(f"{metrica} Der")
+			
+			# Izquierda
+			if len(grupo_izq) > 0 and pd.notna(jugador_izq):
+				media_grupo_izq = grupo_izq.mean()
+				std_grupo_izq = grupo_izq.std()
+				filas_tabla.append([jugador_izq, media_grupo_izq, std_grupo_izq])
+				indices_tabla.append(f"{metrica} Izq")
+	
+	# Crear DataFrame
+	df_comparativo = pd.DataFrame(
+		filas_tabla,
+		columns=[f"{jugador}", f"Media {categoria}", f"Desv. Est. {categoria}"],
+		index=indices_tabla
+	)
+	df_comparativo.index.name = "Métrica"
+	
+	return df_comparativo
+
+
 def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 	"""
 	Análisis completo de comparación jugador vs grupo para fuerza
@@ -597,6 +653,28 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 		with st.spinner("Generando gráfico comparativo..."):
 			fig_comparacion = crear_grafico_comparacion_multifuerza(df, datos_jugador, categoria, jugador, metricas_seleccionadas)
 			st.plotly_chart(fig_comparacion, use_container_width=True, config={'displayModeBar': False})
+		
+		# === TABLA COMPARATIVA ===
+		st.markdown(f"#### {jugador} vs Grupo")
+		
+		with st.spinner("Generando tabla comparativa..."):
+			df_tabla_comparacion = crear_tabla_comparacion_jugador_grupo(df, datos_jugador, categoria, jugador, metricas_seleccionadas)
+			
+			# Mostrar tabla con el mismo estilo que fuerza_analysis
+			st.dataframe(
+				df_tabla_comparacion.style.format("{:.1f}").apply(
+					lambda x: [
+						'background-color: rgba(220, 38, 38, 0.15); font-weight: bold;',  # Columna jugador
+						'background-color: rgba(255, 255, 255, 0.08);',  # Columna media
+						'background-color: rgba(59, 130, 246, 0.15);'    # Columna desv. est.
+					], axis=1
+				).set_table_styles([
+					{'selector': 'th.col_heading', 'props': 'background-color: rgba(220, 38, 38, 0.3); color: white; font-weight: bold;'},
+					{'selector': 'th.row_heading', 'props': 'background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;'},
+					{'selector': 'td', 'props': 'text-align: center; padding: 8px;'}
+				]),
+				use_container_width=True
+			)
 		
 		# Interpretación - Estilo idéntico al gráfico grupal
 		st.markdown(f"""
