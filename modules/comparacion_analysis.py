@@ -706,7 +706,7 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 				use_container_width=True
 			)
 		
-		# Sección de comparación completada
+		# Sección de comparación completada - Actualizado 2025-01-27 17:27
 		
 	else:
 		st.warning("⚠️ Selecciona al menos una métrica para mostrar la comparación.")
