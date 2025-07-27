@@ -7,7 +7,7 @@ import streamlit as st
 
 # Importar módulos refactorizados
 from config.settings import DATA_PATH
-from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_header_seccion, crear_footer
+from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_header_seccion, crear_footer, configurar_tema_oscuro
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
 from modules.fuerza_analysis import analizar_fuerza
@@ -24,6 +24,9 @@ st.set_page_config(
 
 def main():
 	"""Función principal de la aplicación"""
+	
+	# Configurar tema oscuro ANTES que todo
+	configurar_tema_oscuro()
 	
 	# Inicializar configuración
 	inicializar_session_state()

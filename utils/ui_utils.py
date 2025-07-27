@@ -25,10 +25,118 @@ def inicializar_session_state():
 	if 'metricas_cache' not in st.session_state:
 		st.session_state.metricas_cache = {}
 
+def configurar_tema_oscuro():
+	"""Configura el tema oscuro programáticamente"""
+	# Configuración del tema mediante st.config
+	try:
+		import streamlit.config as config
+		config.set_option('theme.base', 'dark')
+		config.set_option('theme.primaryColor', '#dc2626')
+		config.set_option('theme.backgroundColor', '#0e1117')
+		config.set_option('theme.secondaryBackgroundColor', '#262730')
+		config.set_option('theme.textColor', '#fafafa')
+	except:
+		pass  # Si no se puede configurar, los CSS harán el trabajo
+
 def aplicar_estilos_css():
 	"""Aplica estilos CSS personalizados"""
 	st.markdown("""
 	<style>
+	/* CONFIGURACIÓN FORZADA DE TEMA OSCURO PARA STREAMLIT CLOUD */
+	.stApp {
+		background-color: #0e1117 !important;
+		color: #fafafa !important;
+	}
+	
+	/* Fondo principal y contenedor */
+	.main .block-container {
+		background-color: #0e1117 !important;
+		color: #fafafa !important;
+		padding-top: 1rem !important;
+	}
+	
+	/* Sidebar completo */
+	.css-1d391kg, .css-1lcbmhc, .css-17eq0hr, .css-1y4p8pa {
+		background-color: #262730 !important;
+		color: #fafafa !important;
+	}
+	
+	/* Headers y texto general */
+	.stMarkdown, .stText, p, h1, h2, h3, h4, h5, h6, span, div {
+		color: #fafafa !important;
+	}
+	
+	/* Selectbox completo */
+	.stSelectbox > div > div, .stSelectbox > div > div > div {
+		background-color: #262730 !important;
+		color: #fafafa !important;
+		border: 1px solid #404040 !important;
+	}
+	
+	.stSelectbox label, .stSelectbox > label {
+		color: #fafafa !important;
+	}
+	
+	/* Dropdown options */
+	.css-26l3qy-menu {
+		background-color: #262730 !important;
+		color: #fafafa !important;
+	}
+	
+	.css-1uccc91-singleValue {
+		color: #fafafa !important;
+	}
+	
+	/* Métricas y contenedores */
+	.css-1xarl3l, .css-1wivap2, .metric-container {
+		background-color: #262730 !important;
+		color: #fafafa !important;
+		border: 1px solid #404040 !important;
+	}
+	
+	/* Botones */
+	.stButton > button {
+		background-color: #dc2626 !important;
+		color: white !important;
+		border: none !important;
+	}
+	
+	.stButton > button:hover {
+		background-color: #b91c1c !important;
+		color: white !important;
+	}
+	
+	/* Tabs */
+	.stTabs [data-baseweb="tab-list"] {
+		background-color: #262730 !important;
+	}
+	
+	.stTabs [data-baseweb="tab"] {
+		color: #fafafa !important;
+		background-color: #262730 !important;
+	}
+	
+	.stTabs [aria-selected="true"] {
+		background-color: #dc2626 !important;
+		color: white !important;
+	}
+	
+	/* Spinner y loading */
+	.stSpinner > div {
+		border-top-color: #dc2626 !important;
+	}
+	
+	/* Expander */
+	.streamlit-expanderHeader {
+		background-color: #262730 !important;
+		color: #fafafa !important;
+	}
+	
+	.streamlit-expanderContent {
+		background-color: #1a1a1a !important;
+		color: #fafafa !important;
+	}
+	
 	/* Animaciones para elementos de Streamlit */
 	.stPlotlyChart {
 		animation: fadeInUp 0.8s ease-out;
