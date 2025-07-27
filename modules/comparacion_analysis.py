@@ -387,7 +387,7 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner=False)
 def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 	"""
-	Crea radar de comparación Z-Score jugador vs grupo
+	Crea radar de comparación Z-Score jugador vs grupo en un solo gráfico
 	"""
 	# Datos del jugador
 	datos_jugador = {}
@@ -407,56 +407,44 @@ def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 			if valores_numericos:
 				datos_grupo[Z_SCORE_METRICAS[col]] = np.mean(valores_numericos)
 	
-	# Crear figura con subplots
-	fig = make_subplots(
-		rows=1, cols=2,
-		specs=[[{"type": "polar"}, {"type": "polar"}]],
-		subplot_titles=(
-			f"🔴 {jugador_nombre} (Z-Score Individual)",
-			f"👥 {categoria} (Z-Score Promedio Grupal)"
-		),
-		horizontal_spacing=0.1
+	# Obtener todas las métricas disponibles (unión de ambos conjuntos)
+	metricas_disponibles = set(datos_jugador.keys()) | set(datos_grupo.keys())
+	metricas_ordenadas = sorted(list(metricas_disponibles))
+	
+	# Preparar datos para ambas series
+	valores_jugador = [datos_jugador.get(metrica, 0) for metrica in metricas_ordenadas]
+	valores_grupo = [datos_grupo.get(metrica, 0) for metrica in metricas_ordenadas]
+	
+	# Crear figura polar única
+	fig = go.Figure()
+	
+	# Agregar serie del jugador individual
+	fig.add_trace(
+		go.Scatterpolar(
+			r=valores_jugador,
+			theta=metricas_ordenadas,
+			fill='toself',
+			fillcolor='rgba(220, 38, 38, 0.25)',
+			line=dict(color=COLORES['rojo_colon'], width=3),
+			marker=dict(color=COLORES['rojo_colon'], size=8, line=dict(color="white", width=2)),
+			name=f"👤 {jugador_nombre}",
+			hovertemplate="<b>%{theta}</b><br>👤 Z-Score Individual: %{r:.2f}<extra></extra>"
+		)
 	)
 	
-	# Radar individual
-	if datos_jugador:
-		categorias_jugador = list(datos_jugador.keys())
-		valores_jugador = list(datos_jugador.values())
-		
-		fig.add_trace(
-			go.Scatterpolar(
-				r=valores_jugador,
-				theta=categorias_jugador,
-				fill='toself',
-				fillcolor='rgba(220, 38, 38, 0.25)',
-				line=dict(color=COLORES['rojo_colon'], width=3),
-				marker=dict(color=COLORES['rojo_colon'], size=8, line=dict(color="white", width=2)),
-				name=f"{jugador_nombre}",
-				showlegend=False,
-				hovertemplate="<b>%{theta}</b><br>Z-Score: %{r:.2f}<extra></extra>"
-			),
-			row=1, col=1
+	# Agregar serie del grupo promedio
+	fig.add_trace(
+		go.Scatterpolar(
+			r=valores_grupo,
+			theta=metricas_ordenadas,
+			fill='toself',
+			fillcolor='rgba(59, 130, 246, 0.25)',
+			line=dict(color=COLORES['azul_zscore'], width=3),
+			marker=dict(color=COLORES['azul_zscore'], size=8, line=dict(color="white", width=2)),
+			name=f"👥 {categoria} (Promedio)",
+			hovertemplate="<b>%{theta}</b><br>👥 Z-Score Promedio: %{r:.2f}<extra></extra>"
 		)
-	
-	# Radar grupal
-	if datos_grupo:
-		categorias_grupo = list(datos_grupo.keys())
-		valores_grupo = list(datos_grupo.values())
-		
-		fig.add_trace(
-			go.Scatterpolar(
-				r=valores_grupo,
-				theta=categorias_grupo,
-				fill='toself',
-				fillcolor='rgba(59, 130, 246, 0.25)',
-				line=dict(color=COLORES['azul_zscore'], width=3),
-				marker=dict(color=COLORES['azul_zscore'], size=8, line=dict(color="white", width=2)),
-				name=f"{categoria} (Promedio)",
-				showlegend=False,
-				hovertemplate="<b>%{theta}</b><br>Z-Score Promedio: %{r:.2f}<extra></extra>"
-			),
-			row=1, col=2
-		)
+	)
 	
 	# Configuración de layout
 	fig.update_layout(
@@ -465,31 +453,37 @@ def crear_radar_comparacion_zscore(df, jugador_data, categoria, jugador_nombre):
 			x=0.5,
 			font=dict(size=18, color="white", family="Roboto", weight="bold")
 		),
-		height=600,
+		height=500,
 		plot_bgcolor='rgba(0,0,0,0)',
 		paper_bgcolor='rgba(0,0,0,0)',
 		font=dict(family="Roboto", color="white"),
-		margin=dict(l=50, r=50, t=80, b=50)
+		margin=dict(l=50, r=50, t=80, b=50),
+		legend=dict(
+			x=0.85, y=0.15,
+			xanchor="left", yanchor="bottom",
+			bgcolor="rgba(40, 40, 40, 0.9)",
+			bordercolor="rgba(255,255,255,0.3)",
+			borderwidth=1,
+			font=dict(size=11, color="white", family="Roboto")
+		)
 	)
 	
-	# Configurar polares
-	for i in [1, 2]:
-		fig.update_polars(
-			radialaxis=dict(
-				visible=True,
-				range=[-3, 3],
-				tickfont=dict(size=10, color="white"),
-				gridcolor="rgba(255,255,255,0.3)",
-				linecolor="rgba(255,255,255,0.3)"
-			),
-			angularaxis=dict(
-				tickfont=dict(size=11, color="white", family="Roboto"),
-				linecolor="rgba(255,255,255,0.3)",
-				gridcolor="rgba(255,255,255,0.3)"
-			),
-			bgcolor="rgba(0,0,0,0)",
-			subplot=f"polar{i}" if i > 1 else "polar"
-		)
+	# Configurar polar
+	fig.update_polars(
+		radialaxis=dict(
+			visible=True,
+			range=[-3, 3],
+			tickfont=dict(size=10, color="white"),
+			gridcolor="rgba(255,255,255,0.3)",
+			linecolor="rgba(255,255,255,0.3)"
+		),
+		angularaxis=dict(
+			tickfont=dict(size=11, color="white", family="Roboto"),
+			linecolor="rgba(255,255,255,0.3)",
+			gridcolor="rgba(255,255,255,0.3)"
+		),
+		bgcolor="rgba(0,0,0,0)"
+	)
 	
 	# Leyenda interpretativa
 	fig.add_annotation(
@@ -653,6 +647,33 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 		with st.spinner("Generando gráfico comparativo..."):
 			fig_comparacion = crear_grafico_comparacion_multifuerza(df, datos_jugador, categoria, jugador, metricas_seleccionadas)
 			st.plotly_chart(fig_comparacion, use_container_width=True, config={'displayModeBar': False})
+		
+		# === RADAR CHART Z-SCORES ===
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# Header para el radar chart
+		st.markdown(f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1);'>
+			<h4 style='margin: 0; color: white; font-size: 18px;'>
+				Comparación Z-Score: {jugador} vs {categoria}
+			</h4>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		# Generar radar chart comparativo con cache optimizado
+		fig_radar_comparacion = crear_radar_comparacion_zscore(df, datos_jugador, categoria, jugador)
+		
+		radar_config = {
+			'displayModeBar': False,
+			'toImageButtonOptions': {
+				'filename': f'radar_zscore_comparacion_{jugador}_{categoria}',
+				'height': 600,
+				'width': 1000
+			}
+		}
+		
+		st.plotly_chart(fig_radar_comparacion, use_container_width=True, config=radar_config)
 		
 		# === TABLA COMPARATIVA ===
 		st.markdown(f"#### {jugador} vs Grupo")
