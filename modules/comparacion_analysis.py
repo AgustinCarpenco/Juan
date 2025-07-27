@@ -243,6 +243,63 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 			yref="y"
 		)
 	
+	# Etiquetas D/I dentro de las barras - Posiciones corregidas
+	for i, name in enumerate(nombres):
+		# Calcular posiciones exactas según el barmode="group"
+		# Con bargap=0.3 y bargroupgap=0.1, las posiciones son:
+		pos_jugador_der = i - 0.225  # Barra jugador derecho
+		pos_jugador_izq = i - 0.075  # Barra jugador izquierdo  
+		pos_grupo_der = i + 0.075   # Barra grupo derecho
+		pos_grupo_izq = i + 0.225   # Barra grupo izquierdo
+		
+		# D en barra del jugador (derecha) - Roja
+		if barras_jugador_der[i] > 50:  # Solo si la barra es lo suficientemente alta
+			fig.add_annotation(
+				text="<b>D</b>",
+				x=pos_jugador_der,
+				y=barras_jugador_der[i] / 2,
+				showarrow=False,
+				font=dict(size=12, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				yanchor="middle"
+			)
+		
+		# I en barra del jugador (izquierda) - Negra
+		if barras_jugador_izq[i] > 50:
+			fig.add_annotation(
+				text="<b>I</b>",
+				x=pos_jugador_izq,
+				y=barras_jugador_izq[i] / 2,
+				showarrow=False,
+				font=dict(size=12, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				yanchor="middle"
+			)
+		
+		# D en barra del grupo (derecha) - Azul
+		if barras_grupo_der[i] > 50:
+			fig.add_annotation(
+				text="<b>D</b>",
+				x=pos_grupo_der,
+				y=barras_grupo_der[i] / 2,
+				showarrow=False,
+				font=dict(size=12, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				yanchor="middle"
+			)
+		
+		# I en barra del grupo (izquierda) - Verde
+		if barras_grupo_izq[i] > 50:
+			fig.add_annotation(
+				text="<b>I</b>",
+				x=pos_grupo_izq,
+				y=barras_grupo_izq[i] / 2,
+				showarrow=False,
+				font=dict(size=12, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				yanchor="middle"
+			)
+	
 	# Configuración del layout - Exactamente igual que el gráfico grupal
 	fig.update_layout(
 		barmode="group",
@@ -299,7 +356,7 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		font=dict(color="white", family="Roboto"),
 		height=650,
 		margin=dict(t=140, b=90, l=60, r=60),  # Margen inferior aumentado para leyendas
-		showlegend=True,
+		showlegend=False,  # Leyenda oculta para gráfico más limpio
 		transition=dict(
 			duration=800,
 			easing="cubic-in-out"
