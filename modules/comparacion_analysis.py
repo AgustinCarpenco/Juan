@@ -658,17 +658,7 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 			st.plotly_chart(fig_comparacion, use_container_width=True, config={'displayModeBar': False})
 		
 		# === RADAR CHART Z-SCORES ===
-		st.markdown("<br>", unsafe_allow_html=True)
-		
-		# Header para el radar chart
-		st.markdown(f"""
-		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
-					border-left: 4px solid rgba(220, 38, 38, 1);'>
-			<h4 style='margin: 0; color: white; font-size: 18px;'>
-				Comparación Z-Score: {jugador} vs {categoria}
-			</h4>
-		</div>
-		""", unsafe_allow_html=True)
+		st.markdown(f"#### Comparación Z-Score: {jugador} vs {categoria}")
 		
 		# Generar radar chart comparativo con cache optimizado
 		fig_radar_comparacion = crear_radar_comparacion_zscore(df, datos_jugador, categoria, jugador)
