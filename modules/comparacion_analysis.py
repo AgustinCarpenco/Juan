@@ -213,53 +213,35 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		)
 	))
 	
-	# Anotaciones LSI (igual que en el gráfico individual)
-	for name in nombres:
-		if name == "CUAD 70°":
-			lsi_val = jugador_data.get("CUAD LSI (%)", None)
-		elif name == "ISQ Wollin":
-			lsi_val = jugador_data.get("ISQUIO LSI (%)", None)
-		elif name == "IMTP":
-			lsi_val = jugador_data.get("IMTP LSI (%)", None)
-		else:
-			lsi_val = lsi_labels.get(name)
+	# Leyendas debajo de cada barra
+	jugador_corto = jugador_nombre.split()[0] + " " + jugador_nombre.split()[1][0] + "." if len(jugador_nombre.split()) > 1 else jugador_nombre
+	
+	for i, name in enumerate(nombres):
+		# Leyenda para barras del jugador (izquierda)
+		fig.add_annotation(
+			text=f"<b>{jugador_corto}</b>",
+			x=i - 0.2,  # Posición ligeramente a la izquierda
+			y=-50,  # Debajo del eje X
+			showarrow=False,
+			font=dict(size=10, color="white", family="Roboto", weight="bold"),
+			xanchor="center",
+			yanchor="top",
+			xref="x",
+			yref="y"
+		)
 		
-		if lsi_val and lsi_val > 0:
-			idx = nombres.index(name)
-			
-			# Determinar color según rango LSI
-			if 90 <= lsi_val <= 110:  # Zona óptima
-				lsi_color = COLORES['verde_optimo']
-				border_color = "rgba(50, 205, 50, 1)"
-			elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
-				lsi_color = COLORES['naranja_alerta']
-				border_color = "rgba(255, 165, 0, 1)"
-			else:  # Zona de riesgo
-				lsi_color = COLORES['rojo_riesgo']
-				border_color = "rgba(255, 69, 0, 1)"
-			
-			# Obtener la altura máxima para posicionar la anotación
-			max_altura = max(
-				barras_jugador_der[idx], 
-				barras_jugador_izq[idx],
-				barras_grupo_der[idx],
-				barras_grupo_izq[idx]
-			)
-			
-			fig.add_annotation(
-				text=f"<b>LSI: {lsi_val:.1f}%</b>",
-				x=name,
-				y=max_altura * 1.4,
-				showarrow=False,
-				font=dict(size=11, color="white", family="Roboto", weight="bold"),
-				xanchor="center",
-				align="center",
-				bgcolor=lsi_color,
-				bordercolor=border_color,
-				borderwidth=2,
-				borderpad=8,
-				opacity=0.95
-			)
+		# Leyenda para barras del grupo (derecha)
+		fig.add_annotation(
+			text="<b>Promedio</b>",
+			x=i + 0.2,  # Posición ligeramente a la derecha
+			y=-50,  # Debajo del eje X
+			showarrow=False,
+			font=dict(size=10, color="white", family="Roboto", weight="bold"),
+			xanchor="center",
+			yanchor="top",
+			xref="x",
+			yref="y"
+		)
 	
 	# Configuración del layout - Exactamente igual que el gráfico grupal
 	fig.update_layout(
@@ -316,7 +298,7 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		paper_bgcolor=COLORES['fondo_oscuro'],
 		font=dict(color="white", family="Roboto"),
 		height=650,
-		margin=dict(t=140, b=60, l=60, r=60),
+		margin=dict(t=140, b=90, l=60, r=60),  # Margen inferior aumentado para leyendas
 		showlegend=True,
 		transition=dict(
 			duration=800,
@@ -569,7 +551,7 @@ def analizar_comparacion_fuerza(df, datos_jugador, jugador, categoria):
 					<ul style='color: rgba(255,255,255,0.9); margin: 0; font-size: 13px;'>
 						<li><strong>Barras sólidas</strong> con estilo estándar</li>
 						<li><strong>Valores exactos</strong> del jugador</li>
-						<li><strong>LSI individual</strong> mostrado arriba</li>
+
 						<li><strong>Mismo estilo</strong> que gráfico individual</li>
 					</ul>
 				</div>
