@@ -35,13 +35,17 @@ def crear_grafico_comparacion_multifuerza(df, jugador_data, categoria, jugador_n
 		"CMJ": ("CMJ F. Der (N)", "CMJ F. Izq (N)")
 	}
 	
-	# Datos del jugador individual
+	# Crear columnas extendidas que incluyan CMJ Frenado
 	columnas_tabla = METRICAS_POR_SECCION["Fuerza"]
-	datos_jugador = preparar_datos_jugador(jugador_data, columnas_tabla)
+	columnas_extendidas = columnas_tabla.copy()
+	columnas_extendidas["CMJ F. Der (N).1"] = "CMJ F. Izq (N).1"  # CMJ Frenado
+	
+	# Datos del jugador individual (con columnas extendidas)
+	datos_jugador = preparar_datos_jugador(jugador_data, columnas_extendidas)
 	
 	# Datos del grupo (estadísticas)
 	datos_grupo = procesar_datos_categoria(df, categoria)
-	media_dict, std_dict = calcular_estadisticas_categoria(datos_grupo, columnas_tabla)
+	media_dict, std_dict = calcular_estadisticas_categoria(datos_grupo, columnas_extendidas)
 	
 	# Preparar datos para el gráfico combinado
 	barras_jugador_der, barras_jugador_izq = [], []
