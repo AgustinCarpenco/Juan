@@ -127,7 +127,7 @@ def crear_footer():
 				padding: 15px; border-radius: 10px; text-align: center; margin-top: 40px;
 				box-shadow: 0 4px 16px rgba(0,0,0,0.2);'>
 		<p style='margin: 0; color: rgba(255,255,255,0.8); font-size: 12px;'>
-			© 2025 Club Atlético Colón - Sistema desarrollado para el Staff Medico | Hechor por Agustin Carpenco v1.0
+			© 2025 Club Atlético Colón - Sistema desarrollado para el Staff Medico | Reporte de Lesiones v1.0
 		</p>
 	</div>
 	""", unsafe_allow_html=True)
